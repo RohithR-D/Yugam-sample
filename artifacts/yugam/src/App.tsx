@@ -7,6 +7,7 @@ import { ModuleProvider, useModule } from "@/context/ModuleContext";
 import CrewDashboard from "@/pages/CrewDashboard";
 import HirePipeline from "@/pages/HirePipeline";
 import CrewPayDashboard from "@/pages/CrewPayDashboard";
+import OrbitDashboard from "@/pages/OrbitDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,8 @@ function ModuleView() {
       return <HirePipeline />;
     case "CrewPay":
       return <CrewPayDashboard />;
+    case "Orbit":
+      return <OrbitDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">
