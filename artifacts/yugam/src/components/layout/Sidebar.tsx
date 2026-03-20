@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useModule } from "@/context/ModuleContext";
 import {
   ChevronDown,
   ChevronRight,
@@ -84,7 +85,7 @@ const categories: Category[] = [
 ];
 
 export default function Sidebar() {
-  const [activeModule, setActiveModule] = useState("Orbit");
+  const { activeModule, setActiveModule } = useModule();
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     categories.forEach((cat) => {
