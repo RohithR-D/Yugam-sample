@@ -1,0 +1,35 @@
+Let's build the "Forge" (Production) module, maintaining our premium Asthiraa-inspired design system. When the user clicks "Forge (Production)" in the sidebar, the workspace should transition to the Production Management dashboard.
+
+1. Page Header:
+
+Title: "Forge Production" (text-2xl font-bold text-gray-900) with a subtext "Manufacturing floor & work order tracking".
+
+Top Right: Add a primary button "+ New Work Order" (Solid yugam-red background, white text, rounded-md, with a hammer/wrench icon).
+
+2. Production Metric Cards (Asthiraa V2 Style):
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Active Work Orders" (blue icon), "Efficiency Rate" (green icon - e.g., 94%), "Machine Downtime" (red icon), and "Quality Pass Rate" (orange icon).
+
+Styling: Pure white cards, light gray borders, rounded-xl. Bold values. Small icons at the top left enclosed in a circular border matching their respective color.
+
+3. Work Order List (With Production Stage Trackers):
+
+Below the metrics, add a search bar: "Search work orders, machines, or parts...".
+
+Below the search, create a vertical stack of wide entity cards (flex flex-col gap-4 mt-6).
+
+Work Order Row Styling (bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all):
+
+Left Section (Order Info): A subtle gear icon. Next to it, the Work Order ID (e.g., "#WO-772-B") stacked above the Product Name (bold text, e.g., "Precision Axle Assembly").
+
+Middle Section 1 (Quantity): "Batch Size" text stacked above the number (e.g., "500 Units").
+
+Middle Section 2 (Visual Production Tracker): A custom linear tracker with 4 nodes: "Setup", "Machining", "Assembly", "QC". Connect them with a line. Use green for completed stages, a pulsing yellow for the "Active" stage, and gray for upcoming stages.
+
+Right Section (Actions): Ghost icon buttons for "View Specs" (File), "Log Progress" (Edit), and "Alert Supervisor" (Alert Triangle).
+
+Create 4 dummy rows with varying production stages.
+
+Please generate this Forge dashboard component and ensure the sidebar switches to it when "Forge" is clicked.
