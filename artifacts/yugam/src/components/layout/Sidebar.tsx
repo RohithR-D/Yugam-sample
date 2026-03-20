@@ -102,27 +102,41 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-[250px] min-w-[250px] h-screen bg-yugam-grey border-r border-border flex flex-col">
-      <div className="h-[60px] flex items-center px-6 shrink-0">
-        <span className="text-2xl font-bold text-yugam-red">Yugam Logo</span>
+    <aside className="w-[250px] min-w-[250px] h-screen bg-yugam-grey border-r border-gray-200/80 flex flex-col">
+      <div className="h-[60px] flex items-center px-5 shrink-0 border-b border-gray-200/60">
+        <img
+          src={`${import.meta.env.BASE_URL}ED-ECS-Yugam.png`}
+          alt="Yugam ERP"
+          className="h-8 w-auto object-contain"
+          onError={(e) => {
+            const target = e.currentTarget;
+            target.style.display = "none";
+            const fallback = target.nextElementSibling as HTMLElement;
+            if (fallback) fallback.style.display = "flex";
+          }}
+        />
+        <span className="text-xl font-bold text-[#E31E24] tracking-tight hidden items-center gap-1.5">
+          <span className="w-6 h-6 bg-[#E31E24] rounded-md flex items-center justify-center text-white text-xs font-black">Y</span>
+          Yugam
+        </span>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-3">
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
         {categories.map((category) => {
           const isExpanded = expandedCategories[category.title];
           return (
             <div key={category.title}>
               <button
                 onClick={() => toggleCategory(category.title)}
-                className="w-full flex items-center justify-between px-3 py-1.5 group cursor-pointer"
+                className="w-full flex items-center justify-between px-3 py-1 group cursor-pointer"
               >
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   {category.title}
                 </span>
                 {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                  <ChevronDown className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />
                 ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-colors" />
+                  <ChevronRight className="w-3 h-3 text-gray-300 group-hover:text-gray-500 transition-colors" />
                 )}
               </button>
 
@@ -135,16 +149,16 @@ export default function Sidebar() {
                       <button
                         key={mod.label}
                         onClick={() => setActiveModule(mod.label)}
-                        className={`w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors rounded-r-md ${
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-[13px] transition-all rounded-r-md ${
                           isActive
-                            ? "bg-red-50 text-[#E31E24] border-l-4 border-[#E31E24] font-medium"
-                            : "text-gray-700 hover:bg-red-50 hover:text-[#E31E24] hover:border-l-4 hover:border-[#E31E24] border-l-4 border-transparent"
+                            ? "bg-red-50 text-[#E31E24] border-l-[3px] border-[#E31E24] font-semibold"
+                            : "text-gray-600 hover:bg-red-50/60 hover:text-[#E31E24] border-l-[3px] border-transparent"
                         }`}
                       >
-                        <Icon className="w-4 h-4 shrink-0" />
+                        <Icon className="w-[15px] h-[15px] shrink-0" />
                         <span className="truncate">
                           {mod.label}
-                          <span className={`ml-1 ${isActive ? "text-[#E31E24]/70" : "text-gray-400"}`}>
+                          <span className={`ml-1 text-[11px] ${isActive ? "text-[#E31E24]/60" : "text-gray-400"}`}>
                             ({mod.subtitle})
                           </span>
                         </span>
