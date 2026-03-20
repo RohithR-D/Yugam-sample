@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import MainLayout from "@/components/layout/MainLayout";
+import CrewDashboard from "@/pages/CrewDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -10,12 +11,7 @@ const queryClient = new QueryClient();
 function Home() {
   return (
     <MainLayout>
-      <div className="flex items-center justify-center h-full">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">Welcome to Yugam ERP</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Select a module from the sidebar to get started.</p>
-        </div>
-      </div>
+      <CrewDashboard />
     </MainLayout>
   );
 }
