@@ -21,7 +21,8 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 ```text
 artifacts-monorepo/
 ├── artifacts/              # Deployable applications
-│   └── api-server/         # Express API server
+│   ├── api-server/         # Express API server
+│   └── yugam/              # Yugam ERP frontend (React + Vite + Tailwind CSS)
 ├── lib/                    # Shared libraries
 │   ├── api-spec/           # OpenAPI spec + Orval codegen config
 │   ├── api-client-react/   # Generated React Query hooks
@@ -90,6 +91,20 @@ Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used b
 ### `lib/api-client-react` (`@workspace/api-client-react`)
 
 Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
+
+### `artifacts/yugam` (`@workspace/yugam`)
+
+Yugam ERP frontend — React + Vite + Tailwind CSS application served at `/`.
+
+- **Theme colors**: Primary accent `yugam-red` (#E31E24), surface `yugam-grey` (#F8F9FA), background pure white (#FFFFFF)
+- **Font**: Inter (sans-serif)
+- **Layout**: Full-screen flex with fixed 250px sidebar, 60px top header, flex-1 main content
+- **Components**:
+  - `src/components/layout/MainLayout.tsx` — root layout wrapper
+  - `src/components/layout/Sidebar.tsx` — left sidebar with logo and navigation
+  - `src/components/layout/Header.tsx` — top header with search and user profile
+- **Navigation items**: HR Management, Sales Hub, Settings (using lucide-react icons)
+- **Dev**: `pnpm --filter @workspace/yugam run dev`
 
 ### `scripts` (`@workspace/scripts`)
 
