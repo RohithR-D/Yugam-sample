@@ -1,0 +1,35 @@
+Let's build the "Vault" (Inventory) module, the first component of our Supply & Production suite. We will continue using the premium Asthiraa-inspired design system. When "Vault (Inventory)" is clicked in the sidebar, the workspace should display the Inventory Management dashboard.
+
+1. Page Header:
+
+Title: "Vault Inventory" (text-2xl font-bold text-gray-900) with a subtext "Real-time stock tracking & warehouse levels".
+
+Top Right: Add a primary button "+ Add Item" (Solid yugam-red background, white text, rounded-md, with a package icon).
+
+2. Inventory Metric Cards (Asthiraa V2 Style):
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Total SKUs" (blue icon), "Low Stock Alerts" (red icon), "Inbound (24h)" (green icon), and "Valuation" (orange icon).
+
+Styling: Pure white cards, light gray borders, rounded-xl. Bold values (e.g., "₹ 42.8L" for valuation). Small icons at the top left enclosed in a circular border matching their respective color.
+
+3. Stock Health List (Entity Cards with Visual Levels):
+
+Below the metrics, add a search bar: "Search warehouse or SKU...".
+
+Below the search, create a vertical stack of wide entity cards (flex flex-col gap-4 mt-6).
+
+Stock Item Row Styling (bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between):
+
+Left Section (Item Info): A small thumbnail placeholder (light gray square with a box icon). Next to it, the SKU ID (e.g., "#SKU-8821" in small gray) stacked above the Item Name (bold text, e.g., "Industrial Grade Steel").
+
+Middle Section 1 (Warehouse): "Primary Warehouse" or "Unit B" label.
+
+Middle Section 2 (Visual Stock Level): A custom flex column (w-56). Top row shows "Stock Level: 85%" or "Critical: 12%". Bottom row is a segmented visual bar (like the heat bars in the CRM). Use Green segments for healthy stock, Yellow for reorder levels, and Red for critical lows.
+
+Right Section (Actions): Ghost icon buttons for "Adjust Stock" (Plus/Minus), "View History" (Clock), and "Order More" (Shopping Cart).
+
+Create 5 dummy rows showcasing various stock health levels (Critical, Low, Healthy, Surplus).
+
+Please generate this Vault dashboard component and ensure the sidebar switches to it when "Vault" is clicked.

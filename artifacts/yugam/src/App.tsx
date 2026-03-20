@@ -11,6 +11,7 @@ import OrbitDashboard from "@/pages/OrbitDashboard";
 import EstimoDashboard from "@/pages/EstimoDashboard";
 import BillrDashboard from "@/pages/BillrDashboard";
 import SyncDashboard from "@/pages/SyncDashboard";
+import VaultDashboard from "@/pages/VaultDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -33,6 +34,8 @@ function ModuleView() {
       return <BillrDashboard />;
     case "Sync":
       return <SyncDashboard />;
+    case "Vault":
+      return <VaultDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">
