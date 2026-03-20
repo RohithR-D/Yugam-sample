@@ -1,0 +1,39 @@
+Now let's build the "Orbit" (CRM) module workspace, strictly adhering to the new clean, spacious design system we just established.
+
+1. Page Header (Clean & Functional):
+
+Title: "Orbit CRM" (text-2xl font-bold text-gray-900) with a subtext "Sales pipeline & client directory".
+
+Top Right: A flex container with three buttons:
+
+"Export CSV" (Ghost button with light border and download icon)
+
+"Import CSV" (Ghost button with light border and upload icon)
+
+"+ Add Client" (Solid yugam-red background, white text, rounded-md).
+
+2. Metric Cards (Asthiraa Style):
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Lead" (blue icon), "Negotiation" (orange icon), "Won" (green icon), and "Lost" (red icon).
+
+Styling: Pure white cards, light gray borders (border-gray-200), rounded-xl. The value (e.g., 0, 12) should be large and bold. The icons must be small, located at the top left, and enclosed in a circular border matching their respective color.
+
+3. Client Entity Cards (The Visual Pipeline):
+
+Below the metrics, add a search bar spanning the full width: "Search clients...".
+
+Below the search, create a 3-column grid (grid-cols-3 gap-6 mt-6) for Client Cards.
+
+Client Card Styling (bg-white border border-gray-100 rounded-xl p-5 shadow-sm):
+
+Top Row: Circular avatar with company initials (soft gradient background). Next to it, Company Name (bold) and Lead Name (gray text). On the far right, a small pill badge indicating current status (e.g., "Won" with a green border and text).
+
+Middle Row (Visual Pipeline): Create a linear step-tracker with 3 nodes: "Lead", "Negotiation", "Won". Connect them with a line. Color the completed nodes and line green, and gray out uncompleted steps.
+
+Bottom Row (Details & Actions): >       * A small flex grid showing "Industry" (e.g., Manufacturing), "Deal Value" (e.g., ₹ 4.5L), and "Source" (e.g., Referral).
+
+Below that, a subtle divider, then quick action icons (mail, phone, folder) on the left, and a "Profile >" link on the right.
+
+Please generate this Orbit dashboard component and ensure the sidebar switches to it when "Orbit" is clicked.
