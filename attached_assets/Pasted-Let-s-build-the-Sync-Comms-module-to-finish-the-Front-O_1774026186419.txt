@@ -1,0 +1,41 @@
+Let's build the "Sync" (Comms) module to finish the Front Office suite. This should be a modern, split-pane unified inbox matching our Asthiraa V2 design system. When the user clicks "Sync" in the sidebar, the workspace should transition to this messaging dashboard.
+
+1. Page Header:
+
+Title: "Sync Communications" (text-2xl font-bold text-gray-900) with a subtext "Unified inbox & team chat".
+
+Top Right: Add a primary button "New Message" (Solid yugam-red background, white text, rounded-md, with a pen/edit icon).
+
+2. The Split-Pane Layout:
+
+Below the header, create a large container taking up most of the screen height (flex h-[700px] bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden mt-6).
+
+3. Left Pane (Inbox List - w-1/3):
+
+Needs a light right border (border-r border-gray-100).
+
+Top: A search bar with placeholder "Search messages..." and a row of subtle filter tabs below it ("All", "Internal", "Clients").
+
+List of Threads (4 dummy rows):
+
+Make rows hoverable (p-4 border-b border-gray-50 hover:bg-gray-50 cursor-pointer transition-colors). Make one of them an "Active" state with a very light red background (bg-red-50).
+
+Each row: Circular avatar (initials with gradient). Next to it, a flex-col with the Sender Name (bold) and a timestamp (e.g., "10:42 AM" on the right). Below the name, a short truncated message snippet (gray text).
+
+Add a small blue dot (w-2 h-2 rounded-full bg-blue-500) to one or two rows to indicate unread messages.
+
+4. Right Pane (Active Conversation - flex-1):
+
+Chat Header: Flex container with the active contact's Avatar, Name, and "Online" status (green dot). Add a phone and video icon on the far right.
+
+Message Area (bg-gray-50 flex-1 p-6 overflow-y-auto flex flex-col gap-4):
+
+Create 3 dummy chat bubbles.
+
+Received Message: Align left. Soft white bubble with a light shadow, gray text.
+
+Sent Message: Align right. Solid yugam-red bubble, white text.
+
+Message Composer (Bottom): A white background area with an input field (bg-gray-100 rounded-full px-4 py-3), a paperclip icon for attachments, and a circular send button (Solid red with a white send/arrow icon).
+
+Please generate this Sync dashboard component and ensure the sidebar switches to it when "Sync" is clicked.
