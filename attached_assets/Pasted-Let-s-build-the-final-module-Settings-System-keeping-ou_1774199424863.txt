@@ -1,0 +1,41 @@
+Let's build the final module: "Settings" (System), keeping our premium Asthiraa V2 design language. When the user clicks "Settings (System)" in the sidebar, the workspace should transition to the System Configuration dashboard.
+
+1. Page Header:
+
+Title: "System Settings" (text-2xl font-bold text-gray-900) with a subtext "Manage your enterprise workspace preferences".
+
+Top Right: Add a secondary "Cancel" button and a primary "Save Changes" button (Solid yugam-red background, white text, rounded-md).
+
+2. Settings Layout (Two-Column):
+
+Below the header, create a layout with a left sidebar menu (w-1/4) and a right content area (w-3/4). Use flex gap-8 mt-6.
+
+3. Left Settings Menu:
+
+Create a vertical list of menu items.
+
+Menu items: "Company Profile" (active state - light red background, red text), "Preferences", "Billing & Plans", "Integrations", and "Notifications".
+
+Styling: Unselected items should be plain text with a hover effect.
+
+4. Right Content Area (Company Profile Form):
+
+Inside the right area, create a large white card (bg-white border border-gray-100 rounded-xl p-6 shadow-sm).
+
+Section 1 (Logo & Branding): A section titled "Company Logo" with a circular placeholder avatar showing a dummy logo, and ghost buttons for "Upload New" and "Remove".
+
+Section 2 (General Info): Create a grid form layout (grid grid-cols-2 gap-6 mt-6).
+
+Input fields: "Company Name" (e.g., Edocs Inc), "Registration / Tax ID" (e.g., GSTIN-22ABCD1234E1Z5).
+
+Section 3 (Localization): Another grid below.
+
+Dropdown fields: "Default Currency" (e.g., INR - Indian Rupee) and "Timezone" (e.g., Asia/Kolkata).
+
+Section 4 (System Toggles): Add a section title "Global Preferences" with a few toggle switch rows (visual only: gray/green toggles).
+
+Toggles: "Force 2FA for all users", "Enable Dark Mode (Beta)", and "Auto-lock inactive sessions (15m)".
+
+Input Styling: Standardize all form inputs with a light gray border, rounded corners (rounded-lg), and clean padding.
+
+Please generate this Settings dashboard component and ensure the sidebar switches to it when "Settings" is clicked. This is the final module for the app!
