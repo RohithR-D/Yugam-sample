@@ -15,6 +15,7 @@ import VaultDashboard from "@/pages/VaultDashboard";
 import FlexDashboard from "@/pages/FlexDashboard";
 import ForgeDashboard from "@/pages/ForgeDashboard";
 import FleetDashboard from "@/pages/FleetDashboard";
+import FlowDashboard from "@/pages/FlowDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,8 @@ function ModuleView() {
       return <ForgeDashboard />;
     case "Fleet":
       return <FleetDashboard />;
+    case "Flow":
+      return <FlowDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">
