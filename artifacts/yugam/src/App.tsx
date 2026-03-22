@@ -22,6 +22,7 @@ import TrailDashboard from "@/pages/TrailDashboard";
 import ContractaDashboard from "@/pages/ContractaDashboard";
 import VisionDashboard from "@/pages/VisionDashboard";
 import GateDashboard from "@/pages/GateDashboard";
+import DriveDashboard from "@/pages/DriveDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -66,6 +67,8 @@ function ModuleView() {
       return <VisionDashboard />;
     case "Gate":
       return <GateDashboard />;
+    case "Drive":
+      return <DriveDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">

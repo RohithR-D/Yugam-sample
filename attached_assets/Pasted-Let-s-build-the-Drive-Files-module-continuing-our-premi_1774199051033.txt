@@ -1,0 +1,41 @@
+Let's build the "Drive" (Files) module, continuing our premium Asthiraa V2 design system. When the user clicks "Drive (Files)" in the sidebar, the workspace should transition to the Cloud Storage dashboard.
+
+1. Page Header:
+
+Title: "Drive Storage" (text-2xl font-bold text-gray-900) with a subtext "Centralized company documents and media assets".
+
+Top Right: Add a secondary "New Folder" button (outline) and a primary "+ Upload File" button (Solid yugam-red, with a cloud-upload icon).
+
+2. Storage Metrics:
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Storage Used" (blue icon - e.g., "485 GB / 1 TB"), "Total Files" (orange icon), "Shared Externally" (purple icon), and "Trash" (red icon).
+
+Styling: Standard white cards, rounded-xl, with circular icon rings and bold values. For the "Storage Used" card, add a tiny progress bar at the bottom showing capacity.
+
+3. Quick Access Folders:
+
+Below the metrics, add a section title "Quick Folders" (text-sm font-bold text-gray-500 uppercase).
+
+Create a grid of 4 folder cards (grid grid-cols-4 gap-4 mt-3).
+
+Folder Styling (bg-white border border-gray-100 rounded-xl p-4 shadow-sm flex items-center gap-3 hover:border-red-100 cursor-pointer): A large blue/yellow folder icon, the Folder Name (e.g., "Brand Assets", "HR Policies", "Invoices 2026", "Legal Templates"), and a small file count.
+
+4. Recent Files List:
+
+Below the folders, add a search bar: "Search files, folders, or owners...".
+
+Below the search, create a vertical stack of wide entity cards for files (flex flex-col gap-3 mt-4).
+
+File Row Styling (bg-white border border-gray-50 rounded-lg p-4 shadow-sm flex items-center justify-between):
+
+Left Section: A file type icon (e.g., PDF in red, Image in blue, Spreadsheet in green). Next to it, the File Name (bold text) and File Size (small gray text, e.g., "2.4 MB").
+
+Middle Section: "Uploaded by" with a tiny avatar and name, and a "Date Modified" timestamp.
+
+Right Section: Ghost icon buttons for "Preview" (Eye), "Share" (Link), and "Download" (Download cloud).
+
+Create 4-5 dummy rows showing a mix of file types.
+
+Please generate this Drive dashboard component and ensure the sidebar switches to it when "Drive" is clicked.
