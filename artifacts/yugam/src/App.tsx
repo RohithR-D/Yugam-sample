@@ -20,6 +20,7 @@ import SprintSolveDashboard from "@/pages/SprintSolveDashboard";
 import LedgerDashboard from "@/pages/LedgerDashboard";
 import TrailDashboard from "@/pages/TrailDashboard";
 import ContractaDashboard from "@/pages/ContractaDashboard";
+import VisionDashboard from "@/pages/VisionDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,8 @@ function ModuleView() {
       return <TrailDashboard />;
     case "Contracta":
       return <ContractaDashboard />;
+    case "Vision":
+      return <VisionDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">
