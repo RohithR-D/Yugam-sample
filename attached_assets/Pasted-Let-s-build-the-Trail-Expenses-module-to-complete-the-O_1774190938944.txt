@@ -1,0 +1,35 @@
+Let's build the "Trail" (Expenses) module to complete the Ops & Finance suite, following our premium Asthiraa V2 design system. When the user clicks "Trail (Expenses)" in the sidebar, the workspace should transition to the Expense Management dashboard.
+
+1. Page Header:
+
+Title: "Trail Expenses" (text-2xl font-bold text-gray-900) with a subtext "Track reimbursements and corporate spending".
+
+Top Right: Add a primary button "+ Log Expense" (Solid yugam-red background, white text, rounded-md, with a receipt/file-text icon).
+
+2. Expense Metric Cards:
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Pending Reimbursements" (orange icon), "Total Spend (MTD)" (blue icon), "Budget Utilization" (green icon - e.g., 72%), and "Flagged Claims" (red icon).
+
+Styling: Standard white cards, rounded-xl, with circular icon rings and bold values.
+
+3. Expense Claim List (With Approval Pipeline):
+
+Below the metrics, add a search bar: "Search by employee, category, or ID...".
+
+Below the search, create a vertical stack of wide entity cards (flex flex-col gap-4 mt-6).
+
+Expense Row Styling (bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all):
+
+Left Section (Claim Info): A subtle receipt icon. Next to it, the Claim ID (e.g., "#EXP-4402") stacked above the Employee Name (bold text, e.g., "Aarav Mehta").
+
+Middle Section 1 (Category & Amount): "Travel & Lodging" (small gray text) stacked above the amount (bold black, e.g., "₹ 12,500").
+
+Middle Section 2 (Visual Approval Tracker): A custom linear tracker with 4 nodes: "Submitted", "Manager", "Finance", "Paid". Connect them with a line. Color nodes green for approved stages and pulsing yellow for the current pending stage.
+
+Right Section (Actions): Ghost icon buttons for "View Receipt" (Paperclip), "Approve" (Check-Circle), and "Decline" (X-Circle).
+
+Create 4 dummy rows with varying approval stages and categories (Travel, Software, Office Supplies, Client Dinner).
+
+Please generate this Trail dashboard component and ensure the sidebar switches to it when "Trail" is clicked.

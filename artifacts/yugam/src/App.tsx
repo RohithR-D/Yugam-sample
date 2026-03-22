@@ -18,6 +18,7 @@ import FleetDashboard from "@/pages/FleetDashboard";
 import FlowDashboard from "@/pages/FlowDashboard";
 import SprintSolveDashboard from "@/pages/SprintSolveDashboard";
 import LedgerDashboard from "@/pages/LedgerDashboard";
+import TrailDashboard from "@/pages/TrailDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -54,6 +55,8 @@ function ModuleView() {
       return <SprintSolveDashboard />;
     case "Ledger":
       return <LedgerDashboard />;
+    case "Trail":
+      return <TrailDashboard />;
     default:
       return (
         <div className="flex items-center justify-center h-full">
