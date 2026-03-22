@@ -1,0 +1,35 @@
+Let's build the "Contracta" (Legal Docs) module using our premium Asthiraa V2 design language. When the user clicks "Contracta (Legal Docs)" in the sidebar, the workspace should transition to the Legal Document Management dashboard.
+
+1. Page Header:
+
+Title: "Contracta Legal" (text-2xl font-bold text-gray-900) with a subtext "Manage corporate agreements, NDAs, and compliance".
+
+Top Right: Add a primary button "+ New Contract" (Solid yugam-red background, white text, rounded-md, with a scale or file-text icon).
+
+2. Legal Metrics:
+
+Create a 4-column grid (gap-4 mt-6).
+
+Cards: "Active Contracts" (blue icon), "Expiring Soon" (orange icon), "Pending Signature" (yellow icon), and "Compliance Score" (green icon - e.g., 98%).
+
+Styling: Standard white cards, rounded-xl, with circular icon rings and bold values.
+
+3. Document Repository List:
+
+Below the metrics, add a search bar: "Search documents by name, client, or type...".
+
+Below the search, create a vertical stack of wide entity cards (flex flex-col gap-4 mt-6).
+
+Contract Row Styling (bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all):
+
+Left Section (Doc Info): A subtle file-text icon. Next to it, the Document Name (bold text, e.g., "Master Service Agreement") and the Client/Entity below it (e.g., "TechNova Solutions").
+
+Middle Section 1 (Status & Expiry): "Valid Until" (e.g., "Dec 2027") stacked above a status pill (e.g., "Active", "Draft", or "Renewal Needed").
+
+Middle Section 2 (Visual Signature Progress): A small progress bar showing how many parties have signed (e.g., "2/3 Signed"). Show the initials of the signers in small circles next to the bar.
+
+Right Section (Actions): Ghost icon buttons for "View PDF" (Eye), "Download" (Download), and "Email for Signature" (Pen-Tool).
+
+Create 4 dummy rows representing different types of contracts (MSA, NDA, Lease, Employment Agreement).
+
+Please generate this Contracta dashboard component and ensure the sidebar switches to it when "Contracta" is clicked.
