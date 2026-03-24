@@ -57,7 +57,7 @@ Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` 
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`; `src/routes/users.ts` exposes `GET/POST /api/users`; `src/routes/clients.ts` exposes `GET/POST /api/clients`
+- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`; `src/routes/users.ts` exposes `GET/POST /api/users`; `src/routes/clients.ts` exposes `GET/POST /api/clients`; `src/routes/quotes.ts` exposes `GET/POST /api/quotes`
 - Depends on: `@workspace/db`, `@workspace/api-zod`
 - `pnpm --filter @workspace/api-server run dev` — run the dev server
 - `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
@@ -72,6 +72,7 @@ Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client insta
 - `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas
   - `src/schema/users.ts` — `usersTable` (id, name, email, role, lastLogin, createdAt) with `insertUserSchema`
   - `src/schema/clients.ts` — `clientsTable` (id, companyName, contactName, status, dealValue, createdAt) with `insertClientSchema`
+  - `src/schema/quotes.ts` — `quotesTable` (id, clientName, quoteNumber, totalAmount, status, issueDate, createdAt) with `insertQuoteSchema` (status validated as Draft/Sent/Accepted/Rejected enum)
 - `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
 - Exports: `.` (pool, db, schema), `./schema` (schema only)
 
@@ -107,7 +108,7 @@ Yugam ERP frontend — React + Vite + Tailwind CSS application served at `/`.
   - `src/components/layout/Header.tsx` — top header with search and user profile
 - **Navigation items**: HR Management, Sales Hub, Settings (using lucide-react icons)
 - **API Proxy**: Vite dev server proxies `/api` requests to the Express API server at `http://localhost:8080`
-- **Full-stack modules**: Settings > User Management fetches/creates users via `/api/users`; Orbit CRM fetches/creates clients via `/api/clients`
+- **Full-stack modules**: Settings > User Management fetches/creates users via `/api/users`; Orbit CRM fetches/creates clients via `/api/clients`; Estimo Quotes fetches/creates quotes via `/api/quotes`
 - **Dev**: `pnpm --filter @workspace/yugam run dev`
 
 ### `scripts` (`@workspace/scripts`)
