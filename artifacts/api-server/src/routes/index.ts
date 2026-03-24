@@ -4,6 +4,7 @@ import usersRouter from "./users";
 import clientsRouter from "./clients";
 import quotesRouter from "./quotes";
 import invoicesRouter from "./invoices";
+import communicationsRouter from "./communications";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(usersRouter);
 router.use(clientsRouter);
 router.use(quotesRouter);
 router.use(invoicesRouter);
+router.use(communicationsRouter);
 
 export default router;
