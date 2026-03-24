@@ -1,163 +1,79 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Search,
-  ShieldPlus,
   ShieldCheck,
   Users,
-  Fingerprint,
+  Car,
+  DoorOpen,
   AlertTriangle,
-  KeyRound,
-  Lock,
-  Power,
-  X,
+  Eye,
+  LogOut,
+  UserPlus,
+  Clock,
 } from "lucide-react";
 
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  role: string;
-  lastLogin: string | null;
-  createdAt: string | null;
-}
-
-const roleStyles: Record<string, string> = {
-  Admin: "bg-red-50 text-red-600",
-  Manager: "bg-blue-50 text-blue-600",
-  Employee: "bg-gray-100 text-gray-600",
-  Viewer: "bg-purple-50 text-purple-600",
-};
-
-const avatarGradients = [
-  "from-red-500 to-rose-600",
-  "from-blue-500 to-indigo-600",
-  "from-emerald-500 to-green-600",
-  "from-amber-500 to-orange-600",
-  "from-purple-500 to-violet-600",
-  "from-pink-500 to-rose-600",
-  "from-cyan-500 to-teal-600",
-  "from-yellow-500 to-amber-600",
+const metrics = [
+  { label: "Visitors Today", value: "34", icon: Users, iconColor: "text-blue-500", ringColor: "border-blue-200" },
+  { label: "Vehicles on Campus", value: "18", icon: Car, iconColor: "text-orange-500", ringColor: "border-orange-200" },
+  { label: "Access Points Active", value: "12/12", icon: DoorOpen, iconColor: "text-green-500", ringColor: "border-green-200" },
+  { label: "Security Alerts", value: "2", icon: AlertTriangle, iconColor: "text-red-500", ringColor: "border-red-200" },
 ];
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+interface VisitorEntry {
+  id: string;
+  name: string;
+  company: string;
+  purpose: string;
+  host: string;
+  checkIn: string;
+  checkOut: string | null;
+  badge: string;
+  type: "visitor" | "vehicle";
+  vehiclePlate?: string;
 }
 
-function getGradient(name: string) {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return avatarGradients[Math.abs(hash) % avatarGradients.length];
-}
+const visitors: VisitorEntry[] = [
+  { id: "VIS-1042", name: "Rahul Kapoor", company: "TechNova Solutions", purpose: "Client Meeting", host: "Arjun Nair", checkIn: "09:15 AM", checkOut: null, badge: "V-12", type: "visitor" },
+  { id: "VEH-0087", name: "Delivery — FedEx", company: "FedEx Logistics", purpose: "Package Delivery", host: "Reception", checkIn: "10:30 AM", checkOut: "10:52 AM", badge: "T-04", type: "vehicle", vehiclePlate: "KA-01-MJ-4521" },
+  { id: "VIS-1043", name: "Sneha Reddy", company: "CloudSync AI", purpose: "Interview - Sr. Engineer", host: "Meera Joshi", checkIn: "11:00 AM", checkOut: null, badge: "V-13", type: "visitor" },
+  { id: "VEH-0088", name: "Vendor — Office Supplies", company: "StationeryHub", purpose: "Supply Drop-off", host: "Admin Desk", checkIn: "11:45 AM", checkOut: null, badge: "T-05", type: "vehicle", vehiclePlate: "MH-12-AB-7890" },
+];
 
-function timeAgo(dateStr: string | null) {
-  if (!dateStr) return "Never";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins} min${mins > 1 ? "s" : ""} ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs} hour${hrs > 1 ? "s" : ""} ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days} day${days > 1 ? "s" : ""} ago`;
-}
+const accessLog = [
+  { time: "11:48 AM", event: "Gate B — Unauthorized swipe attempt (Badge #E-99 revoked)", type: "error" },
+  { time: "11:30 AM", event: "Gate A — Vendor vehicle KA-01-MJ-4521 checked in", type: "info" },
+  { time: "10:52 AM", event: "Gate A — FedEx delivery vehicle checked out", type: "success" },
+  { time: "09:15 AM", event: "Main Lobby — Visitor Rahul Kapoor issued Badge V-12", type: "info" },
+  { time: "08:00 AM", event: "All gates — Morning shift activated, 12/12 access points online", type: "success" },
+];
 
 const logDotColors: Record<string, string> = {
-  warning: "bg-yellow-400",
   error: "bg-red-400",
   success: "bg-green-400",
   info: "bg-blue-400",
 };
 
-const auditLog = [
-  { time: "10:42 AM", event: "Admin changed Fleet module permissions for Manager role", type: "warning" },
-  { time: "10:15 AM", event: "Failed login attempt from IP: 192.168.1.47 (blocked)", type: "error" },
-  { time: "09:58 AM", event: "MFA enabled for user meera.joshi@edecs.com", type: "success" },
-  { time: "09:30 AM", event: "New user divya.rao@edecs.com provisioned by Admin", type: "info" },
-];
-
 export default function GateDashboard() {
   const [search, setSearch] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ name: "", email: "", role: "Employee" });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
 
-  const fetchUsers = useCallback(async () => {
-    try {
-      const res = await fetch("/api/users");
-      if (res.ok) {
-        const data = await res.json();
-        setUsers(data);
-      }
-    } catch {
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || "Failed to create user");
-        return;
-      }
-      setShowModal(false);
-      setFormData({ name: "", email: "", role: "Employee" });
-      await fetchUsers();
-    } catch {
-      setError("Network error");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const filtered = users.filter(
-    (u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase()) ||
-      u.role.toLowerCase().includes(search.toLowerCase())
+  const filtered = visitors.filter(
+    (v) =>
+      v.name.toLowerCase().includes(search.toLowerCase()) ||
+      v.company.toLowerCase().includes(search.toLowerCase()) ||
+      v.id.toLowerCase().includes(search.toLowerCase()) ||
+      (v.vehiclePlate?.toLowerCase().includes(search.toLowerCase()) ?? false)
   );
-
-  const metrics = [
-    { label: "Active Users", value: String(users.length), icon: Users, iconColor: "text-blue-500", ringColor: "border-blue-200" },
-    { label: "Security Score", value: "94%", icon: ShieldCheck, iconColor: "text-green-500", ringColor: "border-green-200" },
-    { label: "MFA Adoption", value: "87%", icon: Fingerprint, iconColor: "text-purple-500", ringColor: "border-purple-200" },
-    { label: "Flagged Attempts", value: "12", icon: AlertTriangle, iconColor: "text-red-500", ringColor: "border-red-200" },
-  ];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Gate Security</h1>
-          <p className="text-sm text-gray-400 mt-0.5">Manage user permissions, authentication, and system logs</p>
+          <p className="text-sm text-gray-400 mt-0.5">Manage visitor logs, vehicle entry, and physical access</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 hover:shadow-red-500/30 transition-all"
-        >
-          <ShieldPlus className="w-4 h-4" />
-          New User
+        <button className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 hover:shadow-red-500/30 transition-all">
+          <UserPlus className="w-4 h-4" />
+          Log Visitor
         </button>
       </div>
 
@@ -184,67 +100,73 @@ export default function GateDashboard() {
         <Search className="w-4 h-4 text-gray-400" />
         <input
           type="search"
-          placeholder="Search users or roles..."
+          placeholder="Search visitors, vehicles, or badge IDs..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="bg-transparent text-sm outline-none w-full placeholder:text-gray-400"
         />
       </div>
 
-      {loading ? (
-        <div className="text-center py-12 text-gray-400">Loading users...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">No users found</div>
-      ) : (
-        <div className="flex flex-col gap-4">
-          {filtered.map((u) => (
-            <div
-              key={u.id}
-              className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all group"
-            >
-              <div className="flex items-center gap-4 min-w-[220px]">
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getGradient(u.name)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
-                  {getInitials(u.name)}
+      <div className="flex flex-col gap-4">
+        {filtered.map((v) => (
+          <div
+            key={v.id}
+            className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all group"
+          >
+            <div className="flex items-center gap-4 min-w-[220px]">
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${v.type === "vehicle" ? "bg-orange-50" : "bg-blue-50"}`}>
+                {v.type === "vehicle" ? (
+                  <Car className="w-5 h-5 text-orange-500" />
+                ) : (
+                  <Users className="w-5 h-5 text-blue-500" />
+                )}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-gray-800">{v.name}</p>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-gray-100 text-gray-500">{v.badge}</span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">{u.name}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{u.email}</p>
-                </div>
-              </div>
-
-              <div className="min-w-[100px] text-center">
-                <span className={`px-3 py-1 rounded-full text-[11px] font-semibold ${roleStyles[u.role] || "bg-gray-100 text-gray-600"}`}>
-                  {u.role}
-                </span>
-              </div>
-
-              <div className="min-w-[120px] text-center">
-                <p className="text-[11px] text-gray-400 uppercase tracking-wide">Last Login</p>
-                <p className="text-sm font-medium text-gray-600 mt-0.5">{timeAgo(u.lastLogin)}</p>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <button className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit Permissions">
-                  <KeyRound className="w-4 h-4" />
-                </button>
-                <button className="p-2 rounded-lg text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 transition-colors" title="Reset Password">
-                  <Lock className="w-4 h-4" />
-                </button>
-                <button className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Deactivate">
-                  <Power className="w-4 h-4" />
-                </button>
+                <p className="text-xs text-gray-400 mt-0.5">{v.company}{v.vehiclePlate ? ` · ${v.vehiclePlate}` : ""}</p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+
+            <div className="min-w-[130px]">
+              <p className="text-[11px] text-gray-400">{v.purpose}</p>
+              <p className="text-xs text-gray-500 mt-0.5">Host: <span className="font-medium text-gray-700">{v.host}</span></p>
+            </div>
+
+            <div className="min-w-[130px] text-center">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-gray-500">
+                <Clock className="w-3 h-3" />
+                <span>{v.checkIn}</span>
+                <span className="text-gray-300">→</span>
+                <span className={v.checkOut ? "text-green-600 font-medium" : "text-yellow-500 font-medium"}>
+                  {v.checkOut || "On Premises"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="View Details">
+                <Eye className="w-4 h-4" />
+              </button>
+              <button className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Check Out">
+                <LogOut className="w-4 h-4" />
+              </button>
+              <button className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors" title="Flag">
+                <ShieldCheck className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
 
       <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h3 className="text-base font-semibold text-gray-800">Recent Activity Log</h3>
+          <h3 className="text-base font-semibold text-gray-800">Physical Access Log</h3>
         </div>
         <div className="divide-y divide-gray-50">
-          {auditLog.map((log, i) => (
+          {accessLog.map((log, i) => (
             <div key={i} className="px-6 py-3.5 flex items-center gap-4 hover:bg-gray-50/50 transition-colors">
               <div className={`w-2 h-2 rounded-full shrink-0 ${logDotColors[log.type]}`} />
               <span className="text-xs font-mono text-gray-400 shrink-0 w-16">{log.time}</span>
@@ -253,78 +175,6 @@ export default function GateDashboard() {
           ))}
         </div>
       </div>
-
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-900">Add New User</h2>
-              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Full Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g., Priya Sharma"
-                  className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="e.g., priya.sharma@edecs.com"
-                  className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Role</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors bg-white"
-                >
-                  <option value="Admin">Admin</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Employee">Employee</option>
-                  <option value="Viewer">Viewer</option>
-                </select>
-              </div>
-
-              {error && (
-                <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-              )}
-
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all"
-                >
-                  {submitting ? "Adding..." : "Add User"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
