@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Search,
   Bell,
@@ -10,74 +10,133 @@ import {
   AlertTriangle,
   CheckCircle2,
   FileClock,
+  X,
 } from "lucide-react";
 
-const metrics = [
-  { label: "Outstanding", value: "₹ 8.5L", icon: CircleDollarSign, iconColor: "text-orange-500", ringColor: "border-orange-200" },
-  { label: "Overdue", value: "₹ 3.2L", icon: AlertTriangle, iconColor: "text-red-500", ringColor: "border-red-200" },
-  { label: "Paid This Month", value: "₹ 12.4L", icon: CheckCircle2, iconColor: "text-green-500", ringColor: "border-green-200" },
-  { label: "Drafts", value: "5", icon: FileClock, iconColor: "text-gray-500", ringColor: "border-gray-200" },
-];
-
-type Status = "Paid" | "Partial" | "Overdue" | "Sent";
-
-interface Invoice {
-  id: string;
-  client: string;
+interface InvoiceRecord {
+  id: number;
+  clientName: string;
+  invoiceNumber: string;
   amount: string;
-  due: string;
-  status: Status;
-  progress: number;
+  status: string;
+  dueDate: string | null;
+  createdAt: string | null;
 }
 
-const invoices: Invoice[] = [
-  { id: "#INV-2026-089", client: "TechNova Solutions", amount: "₹ 1.2L", due: "Apr 15, 2026", status: "Paid", progress: 100 },
-  { id: "#INV-2026-091", client: "GreenLeaf Industries", amount: "₹ 4.8L", due: "Apr 02, 2026", status: "Partial", progress: 50 },
-  { id: "#INV-2026-085", client: "CloudSync AI", amount: "₹ 6.5L", due: "Mar 10, 2026", status: "Overdue", progress: 0 },
-  { id: "#INV-2026-093", client: "Apex Dynamics", amount: "₹ 2.1L", due: "Apr 20, 2026", status: "Sent", progress: 0 },
-];
-
-function StatusPill({ status }: { status: Status }) {
-  const styles: Record<Status, string> = {
+function StatusPill({ status }: { status: string }) {
+  const styles: Record<string, string> = {
     Paid: "bg-green-50 text-green-600",
-    Partial: "bg-yellow-50 text-yellow-600",
+    Unpaid: "bg-blue-50 text-blue-600",
     Overdue: "bg-red-50 text-red-600",
-    Sent: "bg-blue-50 text-blue-600",
+    Draft: "bg-gray-100 text-gray-600",
   };
   return (
-    <span className={`px-3 py-0.5 rounded-full text-[11px] font-semibold ${styles[status]}`}>
+    <span className={`px-3 py-0.5 rounded-full text-[11px] font-semibold ${styles[status] || "bg-gray-100 text-gray-600"}`}>
       {status}
     </span>
   );
 }
 
-function PaymentBar({ status, progress }: { status: Status; progress: number }) {
-  const fillColor: Record<Status, string> = {
-    Paid: "bg-green-500",
-    Partial: "bg-yellow-400",
-    Overdue: "bg-red-400",
-    Sent: "bg-blue-300",
+function PaymentBar({ status }: { status: string }) {
+  const config: Record<string, { color: string; width: string }> = {
+    Paid: { color: "bg-green-500", width: "100%" },
+    Unpaid: { color: "bg-blue-300", width: "8%" },
+    Overdue: { color: "bg-red-400", width: "8%" },
+    Draft: { color: "bg-gray-300", width: "0%" },
   };
+  const c = config[status] || config.Draft;
   return (
     <div className="w-full mt-2">
       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all ${fillColor[status]}`}
-          style={{ width: `${status === "Overdue" ? 8 : status === "Sent" ? 8 : progress}%` }}
-        />
+        <div className={`h-full rounded-full transition-all ${c.color}`} style={{ width: c.width }} />
       </div>
     </div>
   );
 }
 
+function formatCurrency(val: string) {
+  const num = parseFloat(val);
+  if (isNaN(num)) return "₹ 0";
+  if (num >= 100000) return `₹ ${(num / 100000).toFixed(1)}L`;
+  if (num >= 1000) return `₹ ${(num / 1000).toFixed(1)}K`;
+  return `₹ ${num.toFixed(0)}`;
+}
+
+function formatDate(dateStr: string | null) {
+  if (!dateStr) return "—";
+  return new Date(dateStr).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
 export default function BillrDashboard() {
   const [search, setSearch] = useState("");
+  const [invoices, setInvoices] = useState<InvoiceRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({ clientName: "", invoiceNumber: "", amount: "", status: "Draft", dueDate: "" });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const fetchInvoices = useCallback(async () => {
+    try {
+      const res = await fetch("/api/invoices");
+      if (res.ok) setInvoices(await res.json());
+    } catch {} finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
+    try {
+      const payload: Record<string, string> = {
+        clientName: formData.clientName,
+        invoiceNumber: formData.invoiceNumber,
+        amount: formData.amount || "0",
+        status: formData.status,
+      };
+      if (formData.dueDate) payload.dueDate = new Date(formData.dueDate).toISOString();
+
+      const res = await fetch("/api/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || "Failed to create invoice");
+        return;
+      }
+      setShowModal(false);
+      setFormData({ clientName: "", invoiceNumber: "", amount: "", status: "Draft", dueDate: "" });
+      await fetchInvoices();
+    } catch {
+      setError("Network error");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const filtered = invoices.filter(
     (inv) =>
-      inv.client.toLowerCase().includes(search.toLowerCase()) ||
-      inv.id.toLowerCase().includes(search.toLowerCase())
+      inv.clientName.toLowerCase().includes(search.toLowerCase()) ||
+      inv.invoiceNumber.toLowerCase().includes(search.toLowerCase())
   );
+
+  const outstanding = invoices.filter((i) => i.status === "Unpaid").reduce((s, i) => s + parseFloat(i.amount), 0);
+  const overdue = invoices.filter((i) => i.status === "Overdue").reduce((s, i) => s + parseFloat(i.amount), 0);
+  const paidTotal = invoices.filter((i) => i.status === "Paid").reduce((s, i) => s + parseFloat(i.amount), 0);
+  const draftCount = invoices.filter((i) => i.status === "Draft").length;
+
+  const metrics = [
+    { label: "Outstanding", value: formatCurrency(outstanding.toString()), icon: CircleDollarSign, iconColor: "text-orange-500", ringColor: "border-orange-200" },
+    { label: "Overdue", value: formatCurrency(overdue.toString()), icon: AlertTriangle, iconColor: "text-red-500", ringColor: "border-red-200" },
+    { label: "Paid Total", value: formatCurrency(paidTotal.toString()), icon: CheckCircle2, iconColor: "text-green-500", ringColor: "border-green-200" },
+    { label: "Drafts", value: draftCount.toString(), icon: FileClock, iconColor: "text-gray-500", ringColor: "border-gray-200" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -86,7 +145,10 @@ export default function BillrDashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Billr Invoicing</h1>
           <p className="text-sm text-gray-400 mt-0.5">Manage invoices & track payments</p>
         </div>
-        <button className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 hover:shadow-red-500/30 transition-all">
+        <button
+          onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 hover:shadow-red-500/30 transition-all"
+        >
           <Plus className="w-4 h-4" />
           Create Invoice
         </button>
@@ -122,46 +184,99 @@ export default function BillrDashboard() {
         />
       </div>
 
-      <div className="flex flex-col gap-4">
-        {filtered.map((inv) => (
-          <div
-            key={inv.id}
-            className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all group"
-          >
-            <div className="flex items-center gap-4 min-w-[220px]">
-              <div className="p-2.5 bg-gray-50 rounded-lg">
-                <Receipt className="w-5 h-5 text-gray-400" />
+      {loading ? (
+        <div className="text-center py-12 text-gray-400">Loading invoices...</div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">No invoices found</div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          {filtered.map((inv) => (
+            <div
+              key={inv.id}
+              className="bg-white border border-gray-100 rounded-xl p-5 shadow-sm flex items-center justify-between hover:border-red-100 transition-all group"
+            >
+              <div className="flex items-center gap-4 min-w-[220px]">
+                <div className="p-2.5 bg-gray-50 rounded-lg">
+                  <Receipt className="w-5 h-5 text-gray-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-mono">{inv.invoiceNumber}</p>
+                  <p className="text-sm font-semibold text-gray-800 mt-0.5">{inv.clientName}</p>
+                </div>
+              </div>
+
+              <div className="min-w-[120px]">
+                <p className="text-sm font-bold text-gray-800">{formatCurrency(inv.amount)}</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Due: {formatDate(inv.dueDate)}</p>
+              </div>
+
+              <div className="w-48">
+                <StatusPill status={inv.status} />
+                <PaymentBar status={inv.status} />
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                <button className="p-2 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors">
+                  <Bell className="w-4 h-4" />
+                </button>
+                <button className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                  <Download className="w-4 h-4" />
+                </button>
+                <button className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
+                  <Link className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-900">Create New Invoice</h2>
+              <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Client Name</label>
+                <input type="text" required value={formData.clientName} onChange={(e) => setFormData({ ...formData, clientName: e.target.value })} placeholder="e.g., Acme Corp" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
               </div>
               <div>
-                <p className="text-xs text-gray-400 font-mono">{inv.id}</p>
-                <p className="text-sm font-semibold text-gray-800 mt-0.5">{inv.client}</p>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Invoice Number</label>
+                <input type="text" required value={formData.invoiceNumber} onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value })} placeholder="e.g., INV-2007" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
               </div>
-            </div>
-
-            <div className="min-w-[120px]">
-              <p className="text-sm font-bold text-gray-800">{inv.amount}</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">Due: {inv.due}</p>
-            </div>
-
-            <div className="w-48">
-              <StatusPill status={inv.status} />
-              <PaymentBar status={inv.status} progress={inv.progress} />
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button className="p-2 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors">
-                <Bell className="w-4 h-4" />
-              </button>
-              <button className="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                <Download className="w-4 h-4" />
-              </button>
-              <button className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors">
-                <Link className="w-4 h-4" />
-              </button>
-            </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Amount (₹)</label>
+                  <input type="number" value={formData.amount} onChange={(e) => setFormData({ ...formData, amount: e.target.value })} placeholder="e.g., 500000" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors bg-white">
+                    <option value="Draft">Draft</option>
+                    <option value="Unpaid">Unpaid</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Overdue">Overdue</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Due Date</label>
+                <input type="date" value={formData.dueDate} onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
+              </div>
+              {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+              <div className="flex gap-2.5 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all">{submitting ? "Creating..." : "Create Invoice"}</button>
+              </div>
+            </form>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

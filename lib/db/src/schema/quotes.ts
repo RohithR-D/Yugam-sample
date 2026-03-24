@@ -17,6 +17,7 @@ export const insertQuoteSchema = createInsertSchema(quotesTable).omit({
   createdAt: true,
 }).extend({
   status: z.enum(["Draft", "Sent", "Accepted", "Rejected"]),
+  issueDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
 });
 
 export type InsertQuote = z.infer<typeof insertQuoteSchema>;
