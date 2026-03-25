@@ -11,6 +11,7 @@ import payrollRouter from "./payroll";
 import inventoryRouter from "./inventory";
 import purchaseOrdersRouter from "./purchaseOrders";
 import productionOrdersRouter from "./productionOrders";
+import shipmentsRouter from "./shipments";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(payrollRouter);
 router.use(inventoryRouter);
 router.use(purchaseOrdersRouter);
 router.use(productionOrdersRouter);
+router.use(shipmentsRouter);
 
 export default router;
