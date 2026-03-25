@@ -6,3 +6,4 @@ export * from "./communications";
 export * from "./employees";
 export * from "./candidates";
 export * from "./payroll";
+export * from "./inventory";

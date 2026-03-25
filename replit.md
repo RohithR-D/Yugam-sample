@@ -57,7 +57,7 @@ Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` 
 
 - Entry: `src/index.ts` — reads `PORT`, starts Express
 - App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`; `src/routes/users.ts` exposes `GET/POST /api/users`; `src/routes/clients.ts` exposes `GET/POST /api/clients`; `src/routes/quotes.ts` exposes `GET/POST /api/quotes`; `src/routes/invoices.ts` exposes `GET/POST /api/invoices`; `src/routes/communications.ts` exposes `GET/POST /api/communications`; `src/routes/employees.ts` exposes `GET/POST /api/employees`; `src/routes/candidates.ts` exposes `GET/POST /api/candidates`; `src/routes/payroll.ts` exposes `GET/POST /api/payroll`
+- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`; `src/routes/users.ts` exposes `GET/POST /api/users`; `src/routes/clients.ts` exposes `GET/POST /api/clients`; `src/routes/quotes.ts` exposes `GET/POST /api/quotes`; `src/routes/invoices.ts` exposes `GET/POST /api/invoices`; `src/routes/communications.ts` exposes `GET/POST /api/communications`; `src/routes/employees.ts` exposes `GET/POST /api/employees`; `src/routes/candidates.ts` exposes `GET/POST /api/candidates`; `src/routes/payroll.ts` exposes `GET/POST /api/payroll`; `src/routes/inventory.ts` exposes `GET/POST /api/inventory`
 - Depends on: `@workspace/db`, `@workspace/api-zod`
 - `pnpm --filter @workspace/api-server run dev` — run the dev server
 - `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
@@ -78,6 +78,7 @@ Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client insta
   - `src/schema/employees.ts` — `employeesTable` (id, name, designation, department, status, joinDate, createdAt) with `insertEmployeeSchema` (status: Active/On Leave/Offboarded)
   - `src/schema/candidates.ts` — `candidatesTable` (id, name, roleApplied, status, appliedDate, createdAt) with `insertCandidateSchema` (status: Applied/Interviewing/Offered/Rejected)
   - `src/schema/payroll.ts` — `payrollTable` (id, employeeName, payPeriod, grossPay, deductions, netPay, status, createdAt) with `insertPayrollSchema` (status: Processing/Paid; netPay auto-calculated server-side)
+  - `src/schema/inventory.ts` — `inventoryTable` (id, itemName, sku unique, category, quantity, unitPrice, status, createdAt) with `insertInventorySchema` (status: In Stock/Low Stock/Out of Stock; duplicate SKU returns 409)
 - `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
 - Exports: `.` (pool, db, schema), `./schema` (schema only)
 
@@ -113,7 +114,7 @@ Yugam ERP frontend — React + Vite + Tailwind CSS application served at `/`.
   - `src/components/layout/Header.tsx` — top header with search and user profile
 - **Navigation items**: HR Management, Sales Hub, Settings (using lucide-react icons)
 - **API Proxy**: Vite dev server proxies `/api` requests to the Express API server at `http://localhost:8080`
-- **Full-stack modules**: Settings > User Management fetches/creates users via `/api/users`; Orbit CRM fetches/creates clients via `/api/clients`; Estimo Quotes fetches/creates quotes via `/api/quotes`; Billr Invoicing fetches/creates invoices via `/api/invoices`; Sync Communications fetches/creates comms via `/api/communications`; Crew Management fetches/creates employees via `/api/employees`; Hire Pipeline fetches/creates candidates via `/api/candidates`; CrewPay Payroll fetches/creates payslips via `/api/payroll`
+- **Full-stack modules**: Settings > User Management fetches/creates users via `/api/users`; Orbit CRM fetches/creates clients via `/api/clients`; Estimo Quotes fetches/creates quotes via `/api/quotes`; Billr Invoicing fetches/creates invoices via `/api/invoices`; Sync Communications fetches/creates comms via `/api/communications`; Crew Management fetches/creates employees via `/api/employees`; Hire Pipeline fetches/creates candidates via `/api/candidates`; CrewPay Payroll fetches/creates payslips via `/api/payroll`; Vault Inventory fetches/creates items via `/api/inventory`
 - **Dev**: `pnpm --filter @workspace/yugam run dev`
 
 ### `scripts` (`@workspace/scripts`)
