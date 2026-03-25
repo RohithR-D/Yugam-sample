@@ -14,3 +14,4 @@ export * from "./projects";
 export * from "./tasks";
 export * from "./transactions";
 export * from "./expenses";
+export * from "./contracts";

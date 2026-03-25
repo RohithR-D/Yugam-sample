@@ -16,6 +16,7 @@ import projectsRouter from "./projects";
 import tasksRouter from "./tasks";
 import transactionsRouter from "./transactions";
 import expensesRouter from "./expenses";
+import contractsRouter from "./contracts";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(projectsRouter);
 router.use(tasksRouter);
 router.use(transactionsRouter);
 router.use(expensesRouter);
+router.use(contractsRouter);
 
 export default router;
