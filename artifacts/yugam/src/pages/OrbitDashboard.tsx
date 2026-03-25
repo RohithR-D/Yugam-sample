@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -114,7 +115,7 @@ export default function OrbitDashboard() {
 
   const fetchClients = useCallback(async () => {
     try {
-      const res = await fetch("/api/clients");
+      const res = await authFetch("/api/clients");
       if (res.ok) setClients(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -128,7 +129,7 @@ export default function OrbitDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/clients", {
+      const res = await authFetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, dealValue: formData.dealValue || "0" }),

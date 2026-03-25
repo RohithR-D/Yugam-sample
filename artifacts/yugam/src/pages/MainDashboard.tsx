@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import { useModule } from "@/context/ModuleContext";
 import {
@@ -84,7 +85,7 @@ export default function MainDashboard() {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const res = await fetch(`${import.meta.env.BASE_URL}api/dashboard-summary`);
+      const res = await authFetch(`${import.meta.env.BASE_URL}api/dashboard-summary`);
       if (!res.ok) throw new Error("Failed to fetch");
       const json = await res.json();
       setData(json);

@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -68,7 +69,7 @@ export default function SyncDashboard() {
 
   const fetchComms = useCallback(async () => {
     try {
-      const res = await fetch("/api/communications");
+      const res = await authFetch("/api/communications");
       if (res.ok) setComms(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -82,7 +83,7 @@ export default function SyncDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/communications", {
+      const res = await authFetch("/api/communications", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

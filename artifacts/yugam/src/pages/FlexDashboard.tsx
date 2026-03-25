@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -61,7 +62,7 @@ export default function FlexDashboard() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch("/api/purchase-orders");
+      const res = await authFetch("/api/purchase-orders");
       if (res.ok) setOrders(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -75,7 +76,7 @@ export default function FlexDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/purchase-orders", {
+      const res = await authFetch("/api/purchase-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

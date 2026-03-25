@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -66,7 +67,7 @@ export default function LedgerDashboard() {
 
   const fetchTransactions = useCallback(async () => {
     try {
-      const res = await fetch("/api/transactions");
+      const res = await authFetch("/api/transactions");
       if (res.ok) setTransactions(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -80,7 +81,7 @@ export default function LedgerDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/transactions", {
+      const res = await authFetch("/api/transactions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

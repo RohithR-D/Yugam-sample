@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -78,7 +79,7 @@ export default function TrailDashboard() {
 
   const fetchExpenses = useCallback(async () => {
     try {
-      const res = await fetch("/api/expenses");
+      const res = await authFetch("/api/expenses");
       if (res.ok) setExpenses(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -92,7 +93,7 @@ export default function TrailDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/expenses", {
+      const res = await authFetch("/api/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -64,7 +65,7 @@ export default function ContractaDashboard() {
 
   const fetchContracts = useCallback(async () => {
     try {
-      const res = await fetch("/api/contracts");
+      const res = await authFetch("/api/contracts");
       if (res.ok) setContracts(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -78,7 +79,7 @@ export default function ContractaDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/contracts", {
+      const res = await authFetch("/api/contracts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

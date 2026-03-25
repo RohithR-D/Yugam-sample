@@ -4,6 +4,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import MainLayout from "@/components/layout/MainLayout";
 import { ModuleProvider, useModule } from "@/context/ModuleContext";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import LoginPage from "@/pages/LoginPage";
 import CrewDashboard from "@/pages/CrewDashboard";
 import HirePipeline from "@/pages/HirePipeline";
 import CrewPayDashboard from "@/pages/CrewPayDashboard";
@@ -87,12 +89,30 @@ function ModuleView() {
   }
 }
 
-function Home() {
+function AuthGate() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen w-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#E31E24]" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <LoginPage />;
+  }
+
   return (
     <MainLayout>
       <ModuleView />
     </MainLayout>
   );
+}
+
+function Home() {
+  return <AuthGate />;
 }
 
 function Router() {
@@ -108,12 +128,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ModuleProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </ModuleProvider>
+        <AuthProvider>
+          <ModuleProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </ModuleProvider>
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

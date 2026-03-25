@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -67,7 +68,7 @@ export default function FleetDashboard() {
 
   const fetchShipments = useCallback(async () => {
     try {
-      const res = await fetch("/api/shipments");
+      const res = await authFetch("/api/shipments");
       if (res.ok) setShipments(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -81,7 +82,7 @@ export default function FleetDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/shipments", {
+      const res = await authFetch("/api/shipments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

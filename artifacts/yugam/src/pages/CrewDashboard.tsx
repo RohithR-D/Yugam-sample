@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Users,
@@ -64,7 +65,7 @@ export default function CrewDashboard() {
 
   const fetchEmployees = useCallback(async () => {
     try {
-      const res = await fetch("/api/employees");
+      const res = await authFetch("/api/employees");
       if (res.ok) setEmployees(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -86,7 +87,7 @@ export default function CrewDashboard() {
       };
       if (formData.joinDate) payload.joinDate = new Date(formData.joinDate).toISOString();
 
-      const res = await fetch("/api/employees", {
+      const res = await authFetch("/api/employees", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

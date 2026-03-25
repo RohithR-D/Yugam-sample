@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -61,7 +62,7 @@ export default function EstimoDashboard() {
 
   const fetchQuotes = useCallback(async () => {
     try {
-      const res = await fetch("/api/quotes");
+      const res = await authFetch("/api/quotes");
       if (res.ok) setQuotes(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -83,7 +84,7 @@ export default function EstimoDashboard() {
       };
       if (formData.issueDate) payload.issueDate = new Date(formData.issueDate).toISOString();
 
-      const res = await fetch("/api/quotes", {
+      const res = await authFetch("/api/quotes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

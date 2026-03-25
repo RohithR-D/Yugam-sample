@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -78,7 +79,7 @@ export default function BillrDashboard() {
 
   const fetchInvoices = useCallback(async () => {
     try {
-      const res = await fetch("/api/invoices");
+      const res = await authFetch("/api/invoices");
       if (res.ok) setInvoices(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -100,7 +101,7 @@ export default function BillrDashboard() {
       };
       if (formData.dueDate) payload.dueDate = new Date(formData.dueDate).toISOString();
 
-      const res = await fetch("/api/invoices", {
+      const res = await authFetch("/api/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

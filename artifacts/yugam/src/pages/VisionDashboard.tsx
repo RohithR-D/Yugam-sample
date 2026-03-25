@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   ArrowRight,
@@ -76,7 +77,7 @@ export default function VisionDashboard() {
 
   const fetchReports = useCallback(async () => {
     try {
-      const res = await fetch("/api/reports");
+      const res = await authFetch("/api/reports");
       if (res.ok) setReports(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -90,7 +91,7 @@ export default function VisionDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/reports", {
+      const res = await authFetch("/api/reports", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

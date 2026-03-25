@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -55,7 +56,7 @@ export default function CrewPayDashboard() {
 
   const fetchPayroll = useCallback(async () => {
     try {
-      const res = await fetch("/api/payroll");
+      const res = await authFetch("/api/payroll");
       if (res.ok) setRecords(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -69,7 +70,7 @@ export default function CrewPayDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/payroll", {
+      const res = await authFetch("/api/payroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

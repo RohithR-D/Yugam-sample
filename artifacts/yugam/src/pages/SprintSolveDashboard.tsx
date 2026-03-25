@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   CheckSquare,
@@ -100,7 +101,7 @@ export default function SprintSolveDashboard() {
 
   const fetchTasks = useCallback(async () => {
     try {
-      const res = await fetch("/api/tasks");
+      const res = await authFetch("/api/tasks");
       if (res.ok) setTasks(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -114,7 +115,7 @@ export default function SprintSolveDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/tasks", {
+      const res = await authFetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

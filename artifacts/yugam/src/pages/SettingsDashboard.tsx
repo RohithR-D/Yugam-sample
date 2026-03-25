@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Building2,
@@ -175,7 +176,7 @@ function UserManagementTab() {
 
   const fetchUsers = useCallback(async () => {
     try {
-      const res = await fetch("/api/users");
+      const res = await authFetch("/api/users");
       if (res.ok) setUsers(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -189,7 +190,7 @@ function UserManagementTab() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/users", {
+      const res = await authFetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),

@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -53,7 +54,7 @@ export default function ForgeDashboard() {
 
   const fetchOrders = useCallback(async () => {
     try {
-      const res = await fetch("/api/production-orders");
+      const res = await authFetch("/api/production-orders");
       if (res.ok) setOrders(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -67,7 +68,7 @@ export default function ForgeDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/production-orders", {
+      const res = await authFetch("/api/production-orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

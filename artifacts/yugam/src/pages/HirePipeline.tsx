@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -64,7 +65,7 @@ export default function HirePipeline() {
 
   const fetchCandidates = useCallback(async () => {
     try {
-      const res = await fetch("/api/candidates");
+      const res = await authFetch("/api/candidates");
       if (res.ok) setCandidates(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -85,7 +86,7 @@ export default function HirePipeline() {
       };
       if (formData.appliedDate) payload.appliedDate = new Date(formData.appliedDate).toISOString();
 
-      const res = await fetch("/api/candidates", {
+      const res = await authFetch("/api/candidates", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

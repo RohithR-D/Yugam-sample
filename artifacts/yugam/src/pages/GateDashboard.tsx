@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -75,7 +76,7 @@ export default function GateDashboard() {
 
   const fetchVisitors = useCallback(async () => {
     try {
-      const res = await fetch("/api/visitors");
+      const res = await authFetch("/api/visitors");
       if (res.ok) setVisitors(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -89,7 +90,7 @@ export default function GateDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/visitors", {
+      const res = await authFetch("/api/visitors", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...formData, checkOutTime: formData.status === "Checked Out" ? new Date().toISOString() : null }),

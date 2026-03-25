@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -61,7 +62,7 @@ export default function FlowDashboard() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const res = await fetch("/api/projects");
+      const res = await authFetch("/api/projects");
       if (res.ok) setProjects(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -75,7 +76,7 @@ export default function FlowDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/projects", {
+      const res = await authFetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

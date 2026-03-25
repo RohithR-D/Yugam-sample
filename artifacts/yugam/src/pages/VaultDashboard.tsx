@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -70,7 +71,7 @@ export default function VaultDashboard() {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const res = await fetch("/api/inventory");
+      const res = await authFetch("/api/inventory");
       if (res.ok) setItems(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -84,7 +85,7 @@ export default function VaultDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/inventory", {
+      const res = await authFetch("/api/inventory", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

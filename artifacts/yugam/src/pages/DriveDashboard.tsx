@@ -1,3 +1,4 @@
+import { authFetch } from "@/lib/authFetch";
 import { useState, useEffect, useCallback } from "react";
 import {
   Search,
@@ -87,7 +88,7 @@ export default function DriveDashboard() {
 
   const fetchFiles = useCallback(async () => {
     try {
-      const res = await fetch("/api/files");
+      const res = await authFetch("/api/files");
       if (res.ok) setFiles(await res.json());
     } catch {} finally {
       setLoading(false);
@@ -101,7 +102,7 @@ export default function DriveDashboard() {
     setError("");
     setSubmitting(true);
     try {
-      const res = await fetch("/api/files", {
+      const res = await authFetch("/api/files", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
