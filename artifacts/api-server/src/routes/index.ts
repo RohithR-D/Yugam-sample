@@ -19,6 +19,7 @@ import expensesRouter from "./expenses";
 import contractsRouter from "./contracts";
 import reportsRouter from "./reports";
 import visitorsRouter from "./visitors";
+import filesRouter from "./files";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(expensesRouter);
 router.use(contractsRouter);
 router.use(reportsRouter);
 router.use(visitorsRouter);
+router.use(filesRouter);
 
 export default router;
