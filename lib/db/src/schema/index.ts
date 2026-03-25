@@ -1,5 +1,7 @@
 export * from "./users";
 export * from "./clients";
+export * from "./contacts";
+export * from "./clientActivities";
 export * from "./quotes";
 export * from "./invoices";
 export * from "./communications";

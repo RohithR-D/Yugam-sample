@@ -2,140 +2,80 @@
 
 ## Overview
 
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+This is a pnpm workspace monorepo using TypeScript, designed for the Yugam ERP system. It includes a robust Express API server, a comprehensive React frontend, and shared libraries for database interactions, API specifications, and generated clients. The project aims to provide a full-fledged Enterprise Resource Planning solution with modules for HR, Sales, CRM, Invoicing, Inventory, Production, and Analytics, catering to diverse business needs with a modern and scalable architecture.
 
-## Stack
+## User Preferences
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+I want iterative development. I prefer detailed explanations. Ask before making major changes. Do not make changes to the folder `artifacts-monorepo/lib/api-client-react/src/generated/`. Do not make changes to the folder `artifacts-monorepo/lib/api-zod/src/generated/`. Do not make changes to the file `artifacts-monorepo/lib/api-spec/openapi.yaml`.
 
-## Structure
+## System Architecture
 
-```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   ├── api-server/         # Express API server
-│   └── yugam/              # Yugam ERP frontend (React + Vite + Tailwind CSS)
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   └── db/                 # Drizzle ORM schema + DB connection
-├── scripts/                # Utility scripts (single workspace package)
-│   └── src/                # Individual .ts scripts, run via `pnpm --filter @workspace/scripts run <script>`
-├── pnpm-workspace.yaml     # pnpm workspace (artifacts/*, lib/*, lib/integrations/*, scripts)
-├── tsconfig.base.json      # Shared TS options (composite, bundler resolution, es2022)
-├── tsconfig.json           # Root TS project references
-└── package.json            # Root package with hoisted devDeps
-```
+The project is structured as a pnpm monorepo, facilitating shared code and dependency management.
 
-## TypeScript & Composite Projects
+**Monorepo Structure:**
+- `artifacts/`: Contains deployable applications (`api-server`, `yugam`).
+- `lib/`: Houses shared libraries (`api-spec`, `api-client-react`, `api-zod`, `db`).
+- `scripts/`: Utility scripts.
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. The root `tsconfig.json` lists all packages as project references. This means:
+**Core Technologies:**
+- **Backend:** Node.js 24, Express 5, TypeScript 5.9.
+- **Frontend:** React, Vite, Tailwind CSS.
+- **Database:** PostgreSQL with Drizzle ORM.
+- **Validation:** Zod for schema validation.
+- **API Generation:** Orval for OpenAPI spec-driven client and schema generation.
+- **Build Tool:** esbuild for efficient bundling.
 
-- **Always typecheck from the root** — run `pnpm run typecheck` (which runs `tsc --build --emitDeclarationOnly`). This builds the full dependency graph so that cross-package imports resolve correctly. Running `tsc` inside a single package will fail if its dependencies haven't been built yet.
-- **`emitDeclarationOnly`** — we only emit `.d.ts` files during typecheck; actual JS bundling is handled by esbuild/tsx/vite...etc, not `tsc`.
-- **Project references** — when package A depends on package B, A's `tsconfig.json` must list B in its `references` array. `tsc --build` uses this to determine build order and skip up-to-date packages.
+**TypeScript & Composite Projects:**
+- Utilizes TypeScript composite projects with `composite: true` in `tsconfig.base.json` for optimized type-checking and build processes across packages.
+- Root `tsconfig.json` manages project references to ensure correct cross-package type resolution and build order.
 
-## Root Scripts
+**API Server (`@workspace/api-server`):**
+- Express 5 based API server.
+- Routes are organized in `src/routes/` and leverage `@workspace/api-zod` for request/response validation and `@workspace/db` for persistence.
+- **Authentication:** JWT-based authentication with login, user profile (`/api/auth/me`), and protected routes.
+- **Global Search:** Unified search across multiple entities (clients, employees, projects, etc.) via `GET /api/search?q=`.
+- **Pagination:** Standardized pagination (page, limit) for list endpoints.
+- **Analytics:** Dedicated endpoints for financial trends and operational statistics.
+- Comprehensive set of RESTful APIs for all ERP modules (users, clients, invoices, employees, inventory, projects, tasks, etc.).
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build` in all packages that define it
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly` using project references
+**Database Layer (`@workspace/db`):**
+- Drizzle ORM with PostgreSQL.
+- Exports a Drizzle client and a comprehensive schema, including models for users, clients, invoices, employees, inventory, projects, tasks, transactions, and more.
+- Drizzle Kit for schema migrations.
 
-## Packages
+**API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
+- OpenAPI 3.1 specification (`openapi.yaml`) defines the API.
+- Orval is used to generate:
+    - React Query hooks and a fetch client (`@workspace/api-client-react`).
+    - Zod schemas for API validation (`@workspace/api-zod`).
 
-### `artifacts/api-server` (`@workspace/api-server`)
+**Frontend (`@workspace/yugam`):**
+- React, Vite, and Tailwind CSS application.
+- **UI/UX:**
+    - **Theme:** `yugam-red` (#E31E24) as primary accent, `yugam-grey` (#F8F9FA) for surfaces, pure white for background.
+    - **Font:** Inter (sans-serif).
+    - **Layout:** Full-screen layout with a fixed 250px sidebar, 60px top header, and a flexible main content area.
+    - **Components:** Reusable layout components for `MainLayout`, `Sidebar`, and `Header`.
+- **Authentication:** `AuthContext` handles JWT token storage (localStorage), with a dedicated `LoginPage`. `authFetch` wrapper manages token attachment and 401 handling.
+- **Global Search:** Integrated search bar in the header with debounced API calls and a categorized command palette dropdown.
+- **Pagination:** Server-side pagination implementation in data tables.
+- **Advanced Analytics:** Vision module features interactive dashboards using `recharts` to visualize financial trends, operational statistics, and project/invoice statuses, powered by live data from API endpoints.
+- **Navigation:** Icon-based navigation for HR Management, Sales Hub, and Settings modules.
+- **Orbit CRM (Relational):** Upgraded from flat list to relational CRM with three tabs: Pipeline (drag-drop Kanban with Lead/Contacted/Proposal/Won/Lost stages, PATCH updates), Clients Directory (paginated table), Contacts Directory (paginated table with company join). Client profile deep-dive shows company details, linked contacts, and chronological activity timeline with note logging. Schema: `clients` (company_name, industry, pipeline_status, deal_value), `contacts` (name, email, phone, contact_type, client_id FK), `client_activities` (client_id FK, activity_type, notes). APIs: GET/POST/PATCH `/api/clients`, GET `/api/clients/:id`, GET/POST `/api/contacts`, GET/POST `/api/client-activities`.
+- **Full-stack Modules:** Implements 21 complete modules covering Dashboard, User Management, CRM, Quoting, Invoicing, Communications, Employee Management, Recruitment, Payroll, Inventory, Procurement, Production, Logistics, Project Management, Task Management, Accounting, Expense Tracking, Contract Management, Analytics, Visitor Management, and File Storage.
 
-Express 5 API server. Routes live in `src/routes/` and use `@workspace/api-zod` for request and response validation and `@workspace/db` for persistence.
+## External Dependencies
 
-- Entry: `src/index.ts` — reads `PORT`, starts Express
-- App setup: `src/app.ts` — mounts CORS, JSON/urlencoded parsing, routes at `/api`
-- **Authentication**: `src/lib/auth.ts` — JWT signing/verification/middleware; `src/routes/auth.ts` — `POST /api/auth/login` (email+password→JWT), `GET /api/auth/me` (token→user). All other routes protected by `authMiddleware` (Bearer token required). Dependencies: `bcryptjs`, `jsonwebtoken`.
-- **Global Search**: `src/routes/search.ts` — `GET /api/search?q=` searches across 7 tables (clients, employees, projects, tasks, invoices, contracts, transactions) using ILIKE, returns unified categorized results (max 20).
-- **Pagination**: `GET /api/transactions` accepts `page` and `limit` query params, returns `{ data, totalCount, page, limit, totalPages }`.
-- **Analytics**: `src/routes/analytics.ts` — `GET /api/analytics/financial-trend` (monthly revenue/expenses from transactions), `GET /api/analytics/operational-stats` (tasks/projects by status, employees by dept, invoices by status, expenses by category).
-- Routes: `src/routes/index.ts` mounts sub-routers; `src/routes/health.ts` exposes `GET /healthz`; `src/routes/users.ts` exposes `GET/POST /api/users`; `src/routes/clients.ts` exposes `GET/POST /api/clients`; `src/routes/quotes.ts` exposes `GET/POST /api/quotes`; `src/routes/invoices.ts` exposes `GET/POST /api/invoices`; `src/routes/communications.ts` exposes `GET/POST /api/communications`; `src/routes/employees.ts` exposes `GET/POST /api/employees`; `src/routes/candidates.ts` exposes `GET/POST /api/candidates`; `src/routes/payroll.ts` exposes `GET/POST /api/payroll`; `src/routes/inventory.ts` exposes `GET/POST /api/inventory`; `src/routes/purchaseOrders.ts` exposes `GET/POST /api/purchase-orders`; `src/routes/productionOrders.ts` exposes `GET/POST /api/production-orders`; `src/routes/shipments.ts` exposes `GET/POST /api/shipments`; `src/routes/projects.ts` exposes `GET/POST /api/projects`; `src/routes/tasks.ts` exposes `GET/POST /api/tasks`; `src/routes/transactions.ts` exposes `GET/POST /api/transactions`; `src/routes/expenses.ts` exposes `GET/POST /api/expenses`; `src/routes/contracts.ts` exposes `GET/POST /api/contracts`; `src/routes/reports.ts` exposes `GET/POST /api/reports`; `src/routes/visitors.ts` exposes `GET/POST /api/visitors`; `src/routes/files.ts` exposes `GET/POST /api/files`
-- Depends on: `@workspace/db`, `@workspace/api-zod`
-- `pnpm --filter @workspace/api-server run dev` — run the dev server
-- `pnpm --filter @workspace/api-server run build` — production esbuild bundle (`dist/index.cjs`)
-- Build bundles an allowlist of deps (express, cors, pg, drizzle-orm, zod, etc.) and externalizes the rest
-
-### `lib/db` (`@workspace/db`)
-
-Database layer using Drizzle ORM with PostgreSQL. Exports a Drizzle client instance and schema models.
-
-- `src/index.ts` — creates a `Pool` + Drizzle instance, exports schema
-- `src/schema/index.ts` — barrel re-export of all models
-- `src/schema/<modelname>.ts` — table definitions with `drizzle-zod` insert schemas
-  - `src/schema/users.ts` — `usersTable` (id, name, email, passwordHash, role, department, lastLogin, createdAt) with `insertUserSchema` — Admin seed: admin@yugam.com / admin123
-  - `src/schema/clients.ts` — `clientsTable` (id, companyName, contactName, status, dealValue, createdAt) with `insertClientSchema`
-  - `src/schema/quotes.ts` — `quotesTable` (id, clientName, quoteNumber, totalAmount, status, issueDate, createdAt) with `insertQuoteSchema` (status validated as Draft/Sent/Accepted/Rejected enum)
-  - `src/schema/invoices.ts` — `invoicesTable` (id, clientName, invoiceNumber, amount, status, dueDate, createdAt) with `insertInvoiceSchema` (status validated as Paid/Unpaid/Overdue/Draft enum)
-  - `src/schema/communications.ts` — `communicationsTable` (id, recipientName, subject, type, status, sentAt, createdAt) with `insertCommunicationSchema` (type: Email/SMS/Call; status: Sent/Delivered/Failed)
-  - `src/schema/employees.ts` — `employeesTable` (id, name, designation, department, status, joinDate, createdAt) with `insertEmployeeSchema` (status: Active/On Leave/Offboarded)
-  - `src/schema/candidates.ts` — `candidatesTable` (id, name, roleApplied, status, appliedDate, createdAt) with `insertCandidateSchema` (status: Applied/Interviewing/Offered/Rejected)
-  - `src/schema/payroll.ts` — `payrollTable` (id, employeeName, payPeriod, grossPay, deductions, netPay, status, createdAt) with `insertPayrollSchema` (status: Processing/Paid; netPay auto-calculated server-side)
-  - `src/schema/inventory.ts` — `inventoryTable` (id, itemName, sku unique, category, quantity, unitPrice, status, createdAt) with `insertInventorySchema` (status: In Stock/Low Stock/Out of Stock; duplicate SKU returns 409)
-  - `src/schema/purchaseOrders.ts` — `purchaseOrdersTable` (id, vendorName, poNumber unique, totalAmount, status, orderDate, createdAt) with `insertPurchaseOrderSchema` (status: Draft/Pending/Approved/Received; duplicate PO number returns 409)
-  - `src/schema/productionOrders.ts` — `productionOrdersTable` (id, workOrderNumber unique, productName, quantity, status, startDate, createdAt) with `insertProductionOrderSchema` (status: Planned/In Progress/Completed/Halted; duplicate work order number returns 409)
-  - `src/schema/shipments.ts` — `shipmentsTable` (id, trackingNumber unique, destination, carrier, status, dispatchDate, createdAt) with `insertShipmentSchema` (status: Pending/In Transit/Delivered/Delayed; duplicate tracking number returns 409)
-  - `src/schema/projects.ts` — `projectsTable` (id, projectName, clientName, budget, status, dueDate, createdAt) with `insertProjectSchema` (status: Planning/Active/Completed/On Hold)
-  - `src/schema/tasks.ts` — `tasksTable` (id, title, description, assignee, priority, status, dueDate, createdAt) with `insertTaskSchema` (priority: High/Medium/Low; status: To Do/In Progress/Review/Done)
-  - `src/schema/transactions.ts` — `transactionsTable` (id, date, description, category, type, amount, createdAt) with `insertTransactionSchema` (type: Credit/Debit)
-  - `src/schema/expenses.ts` — `expensesTable` (id, date, merchant, category, amount, status, submittedBy, createdAt) with `insertExpenseSchema` (status: Pending/Approved/Reimbursed/Rejected)
-  - `src/schema/contracts.ts` — `contractsTable` (id, title, partyName, type, status, expiryDate, createdAt) with `insertContractSchema` (status: Active/Expiring Soon/Expired/Terminated)
-  - `src/schema/reports.ts` — `reportsTable` (id, reportName, moduleSource, chartType, lastRun, createdAt) with `insertReportSchema`
-  - `src/schema/visitors.ts` — `visitorsTable` (id, visitorName, purpose, hostName, status, checkInTime, checkOutTime, createdAt) with `insertVisitorSchema` (status: On Premises/Checked Out)
-  - `src/schema/files.ts` — `filesTable` (id, fileName, folder, size, uploadedBy, uploadDate, createdAt) with `insertFileSchema`
-- `drizzle.config.ts` — Drizzle Kit config (requires `DATABASE_URL`, automatically provided by Replit)
-- Exports: `.` (pool, db, schema), `./schema` (schema only)
-
-Production migrations are handled by Replit when publishing. In development, we just use `pnpm --filter @workspace/db run push`, and we fallback to `pnpm --filter @workspace/db run push-force`.
-
-### `lib/api-spec` (`@workspace/api-spec`)
-
-Owns the OpenAPI 3.1 spec (`openapi.yaml`) and the Orval config (`orval.config.ts`). Running codegen produces output into two sibling packages:
-
-1. `lib/api-client-react/src/generated/` — React Query hooks + fetch client
-2. `lib/api-zod/src/generated/` — Zod schemas
-
-Run codegen: `pnpm --filter @workspace/api-spec run codegen`
-
-### `lib/api-zod` (`@workspace/api-zod`)
-
-Generated Zod schemas from the OpenAPI spec (e.g. `HealthCheckResponse`). Used by `api-server` for response validation.
-
-### `lib/api-client-react` (`@workspace/api-client-react`)
-
-Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHealthCheck`, `healthCheck`).
-
-### `artifacts/yugam` (`@workspace/yugam`)
-
-Yugam ERP frontend — React + Vite + Tailwind CSS application served at `/`.
-
-- **Theme colors**: Primary accent `yugam-red` (#E31E24), surface `yugam-grey` (#F8F9FA), background pure white (#FFFFFF)
-- **Font**: Inter (sans-serif)
-- **Layout**: Full-screen flex with fixed 250px sidebar, 60px top header, flex-1 main content
-- **Components**:
-  - `src/components/layout/MainLayout.tsx` — root layout wrapper
-  - `src/components/layout/Sidebar.tsx` — left sidebar with logo and navigation
-  - `src/components/layout/Header.tsx` — top header with search and user profile
-- **Authentication**: `src/context/AuthContext.tsx` — AuthProvider with JWT token storage in localStorage; `src/pages/LoginPage.tsx` — split-panel login screen with demo credentials; `src/lib/authFetch.ts` — fetch wrapper that attaches Bearer token and handles 401 auto-logout. All API calls use `authFetch`. Header shows logged-in user name, role, department, and Sign Out button.
-- **Global Search**: Header search bar with 300ms debounce calls `/api/search?q=`, shows categorized command palette dropdown. Click results to navigate to the matching module.
-- **Pagination**: Ledger module uses server-side pagination (page/limit params). Bottom bar shows "Showing X to Y of Z", page number buttons, Previous/Next controls.
-- **Advanced Analytics**: Vision module has "Interactive Dashboards" section with recharts: AreaChart (Revenue vs Expenses trend), BarChart (Tasks by status, Employees by dept, Expense breakdown), PieChart (Projects by status, Invoice status). All charts use live data from `/api/analytics/*` endpoints. Dependency: `recharts`.
-- **Navigation items**: HR Management, Sales Hub, Settings (using lucide-react icons)
-- **API Proxy**: Vite dev server proxies `/api` requests to the Express API server at `http://localhost:8080`
-- **Full-stack modules (all 21 complete)**: Main Dashboard aggregates live data from all tables via `/api/dashboard-summary`; Settings > User Management fetches/creates users via `/api/users`; Orbit CRM fetches/creates clients via `/api/clients`; Estimo Quotes fetches/creates quotes via `/api/quotes`; Billr Invoicing fetches/creates invoices via `/api/invoices`; Sync Communications fetches/creates comms via `/api/communications`; Crew Management fetches/creates employees via `/api/employees`; Hire Pipeline fetches/creates candidates via `/api/candidates`; CrewPay Payroll fetches/creates payslips via `/api/payroll`; Vault Inventory fetches/creates items via `/api/inventory`; Flex Procurement fetches/creates POs via `/api/purchase-orders`; Forge Production fetches/creates work orders via `/api/production-orders`; Fleet Logistics fetches/creates shipments via `/api/shipments`; Flow Projects fetches/creates projects via `/api/projects`; Sprint & Solve fetches/creates tasks via `/api/tasks`; Ledger Accounts fetches/creates transactions via `/api/transactions`; Trail Expenses fetches/creates expenses via `/api/expenses`; Contracta Legal fetches/creates contracts via `/api/contracts`; Vision Analytics fetches/creates reports via `/api/reports`; Gate Security fetches/creates visitors via `/api/visitors`; Drive Storage fetches/creates files via `/api/files`
-- **Dev**: `pnpm --filter @workspace/yugam run dev`
-
-### `scripts` (`@workspace/scripts`)
-
-Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+- **Database:** PostgreSQL
+- **ORM:** Drizzle ORM
+- **API Specification:** OpenAPI 3.1
+- **API Codegen:** Orval
+- **Frontend State Management/Data Fetching:** React Query
+- **Charting Library:** recharts
+- **Date Utilities:** Day.js
+- **Form Validation:** Zod, drizzle-zod
+- **Hashing:** bcryptjs
+- **JWT:** jsonwebtoken
+- **UI Icons:** lucide-react
+- **HTTP Client:** `authFetch` (custom wrapper)
+- **CORS Middleware:** `cors`
