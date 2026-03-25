@@ -13,6 +13,7 @@ import purchaseOrdersRouter from "./purchaseOrders";
 import productionOrdersRouter from "./productionOrders";
 import shipmentsRouter from "./shipments";
 import projectsRouter from "./projects";
+import tasksRouter from "./tasks";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(purchaseOrdersRouter);
 router.use(productionOrdersRouter);
 router.use(shipmentsRouter);
 router.use(projectsRouter);
+router.use(tasksRouter);
 
 export default router;
