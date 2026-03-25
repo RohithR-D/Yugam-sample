@@ -6,7 +6,7 @@ import {
   CalendarClock,
   BarChart3,
   Activity,
-  PieChart,
+  PieChart as PieChartIcon,
   Target,
   FileText,
   Plus,
@@ -14,7 +14,24 @@ import {
   X,
   Layers,
   Clock,
+  TrendingUp,
+  TrendingDown,
 } from "lucide-react";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from "recharts";
 
 interface ReportRecord {
   id: number;
@@ -23,6 +40,47 @@ interface ReportRecord {
   chartType: string;
   lastRun: string;
   createdAt: string | null;
+}
+
+interface FinancialTrend {
+  month: string;
+  label: string;
+  revenue: number;
+  expenses: number;
+  netPL: number;
+}
+
+interface OperationalStats {
+  tasksByStatus: { status: string; count: number }[];
+  projectsByStatus: { status: string; count: number }[];
+  employeesByDept: { department: string; count: number }[];
+  invoicesByStatus: { status: string; count: number }[];
+  expensesByCategory: { category: string; total: number }[];
+}
+
+const STATUS_COLORS: Record<string, string> = {
+  "To Do": "#6366f1",
+  "In Progress": "#f59e0b",
+  Done: "#22c55e",
+  Completed: "#22c55e",
+  Active: "#3b82f6",
+  "On Hold": "#f97316",
+  Cancelled: "#ef4444",
+  Planning: "#8b5cf6",
+  Paid: "#22c55e",
+  Pending: "#f59e0b",
+  Overdue: "#ef4444",
+  Draft: "#94a3b8",
+  Sent: "#3b82f6",
+};
+
+const PIE_COLORS = ["#E31E24", "#3b82f6", "#22c55e", "#f59e0b", "#8b5cf6", "#f97316", "#06b6d4", "#ec4899"];
+
+function formatCurrency(v: number) {
+  if (v >= 10000000) return `₹${(v / 10000000).toFixed(1)} Cr`;
+  if (v >= 100000) return `₹${(v / 100000).toFixed(1)} L`;
+  if (v >= 1000) return `₹${(v / 1000).toFixed(1)}K`;
+  return `₹${v.toFixed(0)}`;
 }
 
 function ModulePill({ source }: { source: string }) {
@@ -49,10 +107,230 @@ function formatDateTime(d: string) {
   return dt.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) + ", " + dt.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
 }
 
+function FinancialTrendChart({ data }: { data: FinancialTrend[] }) {
+  const totalRevenue = data.reduce((s, d) => s + d.revenue, 0);
+  const totalExpenses = data.reduce((s, d) => s + d.expenses, 0);
+  const netPL = totalRevenue - totalExpenses;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+            <TrendingUp className="w-4.5 h-4.5 text-blue-500" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-gray-800">Revenue vs Expenses</h3>
+            <p className="text-xs text-gray-400">Monthly financial trend</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" />
+            Revenue: {formatCurrency(totalRevenue)}
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#E31E24]" />
+            Expenses: {formatCurrency(totalExpenses)}
+          </span>
+          <span className={`flex items-center gap-1 font-semibold ${netPL >= 0 ? "text-green-600" : "text-red-600"}`}>
+            {netPL >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            Net: {formatCurrency(Math.abs(netPL))}
+          </span>
+        </div>
+      </div>
+      <div className="h-[280px] mt-4">
+        {data.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">No transaction data available</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <defs>
+                <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.2} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="expenseGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#E31E24" stopOpacity={0.15} />
+                  <stop offset="95%" stopColor="#E31E24" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(v)} width={70} />
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                formatter={(value: number, name: string) => [formatCurrency(value), name === "revenue" ? "Revenue" : "Expenses"]}
+                labelFormatter={(label) => `Month: ${label}`}
+              />
+              <Area type="monotone" dataKey="revenue" stroke="#22c55e" strokeWidth={2.5} fill="url(#revenueGrad)" dot={{ r: 3.5, fill: "#22c55e", strokeWidth: 0 }} activeDot={{ r: 5.5, strokeWidth: 2, stroke: "#fff" }} />
+              <Area type="monotone" dataKey="expenses" stroke="#E31E24" strokeWidth={2.5} fill="url(#expenseGrad)" dot={{ r: 3.5, fill: "#E31E24", strokeWidth: 0 }} activeDot={{ r: 5.5, strokeWidth: 2, stroke: "#fff" }} />
+            </AreaChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TaskProjectChart({ stats }: { stats: OperationalStats }) {
+  const taskData = stats.tasksByStatus.map((t) => ({
+    name: t.status,
+    value: t.count,
+    fill: STATUS_COLORS[t.status] || "#94a3b8",
+  }));
+
+  const projectData = stats.projectsByStatus.map((p) => ({
+    name: p.status,
+    value: p.count,
+    fill: STATUS_COLORS[p.status] || "#94a3b8",
+  }));
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-lg bg-purple-50 flex items-center justify-center">
+          <Activity className="w-4.5 h-4.5 text-purple-500" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-gray-800">Task & Project Distribution</h3>
+          <p className="text-xs text-gray-400">Status breakdown across operations</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-6 mt-4">
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Tasks by Status</p>
+          <div className="h-[220px]">
+            {taskData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">No tasks</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={taskData} margin={{ top: 5, right: 5, left: -15, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip
+                    contentStyle={{ borderRadius: "10px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                    formatter={(value: number) => [value, "Tasks"]}
+                  />
+                  <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={36}>
+                    {taskData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Projects by Status</p>
+          <div className="h-[220px]">
+            {projectData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">No projects</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={projectData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                    {projectData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ borderRadius: "10px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                  <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-xs text-gray-600">{value}</span>} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseBreakdownChart({ data }: { data: { category: string; total: number }[] }) {
+  const sorted = [...data].sort((a, b) => b.total - a.total);
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center">
+          <Target className="w-4.5 h-4.5 text-orange-500" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-gray-800">Expense Breakdown</h3>
+          <p className="text-xs text-gray-400">Spending distribution by category</p>
+        </div>
+      </div>
+      <div className="h-[280px] mt-4">
+        {sorted.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">No expense data</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={sorted} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(v)} />
+              <YAxis type="category" dataKey="category" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} width={90} />
+              <Tooltip
+                contentStyle={{ borderRadius: "10px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                formatter={(value: number) => [formatCurrency(value), "Amount"]}
+              />
+              <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={22}>
+                {sorted.map((_, i) => (
+                  <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InvoicePieChart({ data }: { data: { status: string; count: number }[] }) {
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+      <div className="flex items-center gap-3 mb-1">
+        <div className="w-9 h-9 rounded-lg bg-green-50 flex items-center justify-center">
+          <FileText className="w-4.5 h-4.5 text-green-500" />
+        </div>
+        <div>
+          <h3 className="text-base font-semibold text-gray-800">Invoice Status</h3>
+          <p className="text-xs text-gray-400">Distribution of invoice states</p>
+        </div>
+      </div>
+      <div className="h-[280px] mt-4">
+        {data.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-gray-400 text-sm">No invoices</div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={data.map((d) => ({ name: d.status, value: d.count }))} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={3} dataKey="value" strokeWidth={0}>
+                {data.map((d, i) => (
+                  <Cell key={i} fill={STATUS_COLORS[d.status] || PIE_COLORS[i % PIE_COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip
+                contentStyle={{ borderRadius: "10px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                formatter={(value: number, name: string) => [value, name]}
+              />
+              <Legend iconType="circle" iconSize={8} formatter={(value) => <span className="text-xs text-gray-600">{value}</span>} />
+            </PieChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </div>
+  );
+}
+
 const sections = [
   { title: "Financial Health", icon: BarChart3, iconColor: "text-blue-500", bars: [65, 80, 55, 90, 72, 85], reports: ["P&L Statement", "Tax Summary", "Cash Flow"] },
   { title: "Operational Flow", icon: Activity, iconColor: "text-green-500", bars: [40, 55, 70, 60, 85, 75], reports: ["Production Throughput", "Procurement Cycle", "Logistics KPIs"] },
-  { title: "Human Capital", icon: PieChart, iconColor: "text-orange-500", bars: [90, 75, 82, 68, 94, 88], reports: ["Headcount Analysis", "Attrition Report", "Payroll Summary"] },
+  { title: "Human Capital", icon: PieChartIcon, iconColor: "text-orange-500", bars: [90, 75, 82, 68, 94, 88], reports: ["Headcount Analysis", "Attrition Report", "Payroll Summary"] },
   { title: "Sales Pipeline", icon: Target, iconColor: "text-purple-500", bars: [50, 72, 88, 64, 78, 92], reports: ["Deal Win/Loss", "Lead Source ROI", "Revenue Forecast"] },
 ];
 
@@ -75,6 +353,10 @@ export default function VisionDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const [financialTrend, setFinancialTrend] = useState<FinancialTrend[]>([]);
+  const [operationalStats, setOperationalStats] = useState<OperationalStats | null>(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
   const fetchReports = useCallback(async () => {
     try {
       const res = await authFetch("/api/reports");
@@ -84,7 +366,23 @@ export default function VisionDashboard() {
     }
   }, []);
 
-  useEffect(() => { fetchReports(); }, [fetchReports]);
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const [trendRes, statsRes] = await Promise.all([
+        authFetch("/api/analytics/financial-trend"),
+        authFetch("/api/analytics/operational-stats"),
+      ]);
+      if (trendRes.ok) setFinancialTrend(await trendRes.json());
+      if (statsRes.ok) setOperationalStats(await statsRes.json());
+    } catch {} finally {
+      setAnalyticsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReports();
+    fetchAnalytics();
+  }, [fetchReports, fetchAnalytics]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,6 +469,62 @@ export default function VisionDashboard() {
             </div>
           );
         })}
+      </div>
+
+      <div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-1 h-5 bg-[#E31E24] rounded-full" />
+          <h2 className="text-lg font-bold text-gray-800">Interactive Dashboards</h2>
+          {analyticsLoading && <span className="text-xs text-gray-400 ml-2">Loading analytics...</span>}
+        </div>
+
+        <div className="space-y-6">
+          <FinancialTrendChart data={financialTrend} />
+
+          <div className="grid grid-cols-2 gap-6">
+            {operationalStats && <TaskProjectChart stats={operationalStats} />}
+            {operationalStats && <ExpenseBreakdownChart data={operationalStats.expensesByCategory} />}
+          </div>
+
+          {operationalStats && (
+            <div className="grid grid-cols-2 gap-6">
+              <InvoicePieChart data={operationalStats.invoicesByStatus} />
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-1">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-50 flex items-center justify-center">
+                    <Layers className="w-4.5 h-4.5 text-indigo-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-800">Team Distribution</h3>
+                    <p className="text-xs text-gray-400">Active employees by department</p>
+                  </div>
+                </div>
+                <div className="h-[280px] mt-4">
+                  {operationalStats.employeesByDept.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">No employees</div>
+                  ) : (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={operationalStats.employeesByDept} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                        <XAxis dataKey="department" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                        <YAxis tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                        <Tooltip
+                          contentStyle={{ borderRadius: "10px", border: "1px solid #e5e7eb", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", fontSize: "13px" }}
+                          formatter={(value: number) => [value, "Employees"]}
+                        />
+                        <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={36}>
+                          {operationalStats.employeesByDept.map((_, i) => (
+                            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-6">

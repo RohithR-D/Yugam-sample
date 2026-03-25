@@ -3,6 +3,7 @@ import healthRouter from "./health";
 import authRouter from "./auth";
 import { authMiddleware } from "../lib/auth";
 import searchRouter from "./search";
+import analyticsRouter from "./analytics";
 import usersRouter from "./users";
 import clientsRouter from "./clients";
 import quotesRouter from "./quotes";
@@ -32,6 +33,7 @@ router.use(authRouter);
 
 router.use(authMiddleware);
 router.use(searchRouter);
+router.use(analyticsRouter);
 router.use(usersRouter);
 router.use(clientsRouter);
 router.use(quotesRouter);
