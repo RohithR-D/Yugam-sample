@@ -2,6 +2,7 @@ import { Router, type IRouter } from "express";
 import healthRouter from "./health";
 import authRouter from "./auth";
 import { authMiddleware } from "../lib/auth";
+import searchRouter from "./search";
 import usersRouter from "./users";
 import clientsRouter from "./clients";
 import quotesRouter from "./quotes";
@@ -30,6 +31,7 @@ router.use(healthRouter);
 router.use(authRouter);
 
 router.use(authMiddleware);
+router.use(searchRouter);
 router.use(usersRouter);
 router.use(clientsRouter);
 router.use(quotesRouter);

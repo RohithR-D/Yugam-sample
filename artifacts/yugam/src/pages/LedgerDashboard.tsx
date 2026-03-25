@@ -4,13 +4,13 @@ import {
   Search,
   Download,
   Plus,
-  TrendingDown,
-  TrendingUp,
   BarChart3,
   CalendarDays,
   X,
   ArrowUpCircle,
   ArrowDownCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 interface TransactionRecord {
@@ -64,24 +64,33 @@ export default function LedgerDashboard() {
   const [formData, setFormData] = useState({ date: new Date().toISOString().split("T")[0], description: "", category: "Sales", type: "Credit", amount: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const pageSize = 10;
 
-  const fetchTransactions = useCallback(async () => {
+  const fetchTransactions = useCallback(async (p: number = page) => {
     try {
-      const res = await authFetch("/api/transactions");
-      if (res.ok) setTransactions(await res.json());
+      const res = await authFetch(`${import.meta.env.BASE_URL}api/transactions?page=${p}&limit=${pageSize}`);
+      if (res.ok) {
+        const json = await res.json();
+        setTransactions(json.data);
+        setTotalCount(json.totalCount);
+        setTotalPages(json.totalPages);
+      }
     } catch {} finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
-  useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
+  useEffect(() => { fetchTransactions(page); }, [page]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setSubmitting(true);
     try {
-      const res = await authFetch("/api/transactions", {
+      const res = await authFetch(`${import.meta.env.BASE_URL}api/transactions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -93,7 +102,8 @@ export default function LedgerDashboard() {
       }
       setShowModal(false);
       setFormData({ date: new Date().toISOString().split("T")[0], description: "", category: "Sales", type: "Credit", amount: "" });
-      await fetchTransactions();
+      setPage(1);
+      await fetchTransactions(1);
     } catch {
       setError("Network error");
     } finally {
@@ -110,14 +120,16 @@ export default function LedgerDashboard() {
   const totalCredits = transactions.filter((t) => t.type === "Credit").reduce((s, t) => s + parseFloat(t.amount), 0);
   const totalDebits = transactions.filter((t) => t.type === "Debit").reduce((s, t) => s + parseFloat(t.amount), 0);
   const netPL = totalCredits - totalDebits;
-  const txnCount = transactions.length;
 
   const metrics = [
     { label: "Total Credits", value: formatCurrency(totalCredits), icon: ArrowUpCircle, iconColor: "text-green-500", ringColor: "border-green-200" },
     { label: "Total Debits", value: formatCurrency(totalDebits), icon: ArrowDownCircle, iconColor: "text-red-500", ringColor: "border-red-200" },
     { label: "Monthly P&L", value: `${netPL >= 0 ? "" : "-"}${formatCurrency(Math.abs(netPL))}`, icon: BarChart3, iconColor: netPL >= 0 ? "text-emerald-500" : "text-red-500", ringColor: netPL >= 0 ? "border-emerald-200" : "border-red-200" },
-    { label: "Transactions", value: txnCount.toString(), icon: CalendarDays, iconColor: "text-blue-500", ringColor: "border-blue-200" },
+    { label: "Total Records", value: totalCount.toString(), icon: CalendarDays, iconColor: "text-blue-500", ringColor: "border-blue-200" },
   ];
+
+  const startRecord = (page - 1) * pageSize + 1;
+  const endRecord = Math.min(page * pageSize, totalCount);
 
   return (
     <div className="space-y-6">
@@ -205,6 +217,57 @@ export default function LedgerDashboard() {
               )}
             </tbody>
           </table>
+
+          <div className="flex items-center justify-between px-5 py-3.5 bg-gray-50/50 border-t border-gray-100">
+            <p className="text-xs text-gray-400">
+              Showing <span className="font-medium text-gray-600">{startRecord}</span> to <span className="font-medium text-gray-600">{endRecord}</span> of <span className="font-medium text-gray-600">{totalCount}</span> transactions
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Previous
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  let pageNum: number;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (page <= 3) {
+                    pageNum = i + 1;
+                  } else if (page >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = page - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-8 h-8 text-xs font-medium rounded-lg transition-colors ${
+                        page === pageNum
+                          ? "bg-[#E31E24] text-white shadow-sm"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
