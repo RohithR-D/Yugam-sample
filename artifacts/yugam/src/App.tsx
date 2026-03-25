@@ -24,6 +24,7 @@ import VisionDashboard from "@/pages/VisionDashboard";
 import GateDashboard from "@/pages/GateDashboard";
 import DriveDashboard from "@/pages/DriveDashboard";
 import SettingsDashboard from "@/pages/SettingsDashboard";
+import MainDashboard from "@/pages/MainDashboard";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,8 @@ function ModuleView() {
   const { activeModule } = useModule();
 
   switch (activeModule) {
+    case "Dashboard":
+      return <MainDashboard />;
     case "Crew":
       return <CrewDashboard />;
     case "Hire":

@@ -20,6 +20,7 @@ import contractsRouter from "./contracts";
 import reportsRouter from "./reports";
 import visitorsRouter from "./visitors";
 import filesRouter from "./files";
+import dashboardSummaryRouter from "./dashboardSummary";
 
 const router: IRouter = Router();
 
@@ -44,5 +45,6 @@ router.use(contractsRouter);
 router.use(reportsRouter);
 router.use(visitorsRouter);
 router.use(filesRouter);
+router.use(dashboardSummaryRouter);
 
 export default router;

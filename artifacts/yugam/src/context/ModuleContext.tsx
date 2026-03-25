@@ -6,12 +6,12 @@ interface ModuleContextValue {
 }
 
 const ModuleContext = createContext<ModuleContextValue>({
-  activeModule: "Crew",
+  activeModule: "Dashboard",
   setActiveModule: () => {},
 });
 
 export function ModuleProvider({ children }: { children: React.ReactNode }) {
-  const [activeModule, setActiveModule] = useState("Crew");
+  const [activeModule, setActiveModule] = useState("Dashboard");
   return (
     <ModuleContext.Provider value={{ activeModule, setActiveModule }}>
       {children}

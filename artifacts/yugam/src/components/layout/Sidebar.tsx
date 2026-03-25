@@ -23,6 +23,7 @@ import {
   Shield,
   HardDrive,
   Settings,
+  LayoutDashboard,
 } from "lucide-react";
 
 interface Module {
@@ -103,7 +104,10 @@ export default function Sidebar() {
 
   return (
     <aside className="w-[250px] min-w-[250px] h-screen bg-yugam-grey border-r border-gray-200/80 flex flex-col">
-      <div className="h-[60px] flex items-center px-5 shrink-0 border-b border-gray-200/60">
+      <button
+        onClick={() => setActiveModule("Dashboard")}
+        className="h-[60px] flex items-center px-5 shrink-0 border-b border-gray-200/60 w-full cursor-pointer hover:bg-gray-50 transition-colors"
+      >
         <img
           src={`${import.meta.env.BASE_URL}ED-ECS-Yugam.png`}
           alt="Yugam ERP"
@@ -119,9 +123,21 @@ export default function Sidebar() {
           <span className="w-6 h-6 bg-[#E31E24] rounded-md flex items-center justify-center text-white text-xs font-black">Y</span>
           Yugam
         </span>
-      </div>
+      </button>
 
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+        <button
+          onClick={() => setActiveModule("Dashboard")}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 text-[13px] transition-all rounded-lg mb-2 ${
+            activeModule === "Dashboard"
+              ? "bg-gradient-to-r from-[#E31E24] to-[#c91920] text-white font-semibold shadow-sm"
+              : "text-gray-600 hover:bg-red-50 hover:text-[#E31E24]"
+          }`}
+        >
+          <LayoutDashboard className="w-[15px] h-[15px] shrink-0" />
+          <span>Dashboard</span>
+        </button>
+
         {categories.map((category) => {
           const isExpanded = expandedCategories[category.title];
           return (
