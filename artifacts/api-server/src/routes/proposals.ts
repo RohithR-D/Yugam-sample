@@ -5,19 +5,31 @@ import { desc, eq } from "drizzle-orm";
 
 const proposalsRouter = Router();
 
+const allProposalFields = {
+  id: proposalsTable.id,
+  clientId: proposalsTable.clientId,
+  title: proposalsTable.title,
+  quoteNumber: proposalsTable.quoteNumber,
+  revision: proposalsTable.revision,
+  status: proposalsTable.status,
+  validFrom: proposalsTable.validFrom,
+  validTo: proposalsTable.validTo,
+  projectLocation: proposalsTable.projectLocation,
+  pocName: proposalsTable.pocName,
+  pocContact: proposalsTable.pocContact,
+  scopeOfWork: proposalsTable.scopeOfWork,
+  inclusions: proposalsTable.inclusions,
+  exclusions: proposalsTable.exclusions,
+  totalEstimatedHours: proposalsTable.totalEstimatedHours,
+  grandTotal: proposalsTable.grandTotal,
+  createdAt: proposalsTable.createdAt,
+  updatedAt: proposalsTable.updatedAt,
+  clientName: clientsTable.companyName,
+};
+
 proposalsRouter.get("/proposals", async (_req: Request, res: Response) => {
   const proposals = await db
-    .select({
-      id: proposalsTable.id,
-      clientId: proposalsTable.clientId,
-      title: proposalsTable.title,
-      status: proposalsTable.status,
-      totalEstimatedHours: proposalsTable.totalEstimatedHours,
-      grandTotal: proposalsTable.grandTotal,
-      createdAt: proposalsTable.createdAt,
-      updatedAt: proposalsTable.updatedAt,
-      clientName: clientsTable.companyName,
-    })
+    .select(allProposalFields)
     .from(proposalsTable)
     .leftJoin(clientsTable, eq(proposalsTable.clientId, clientsTable.id))
     .orderBy(desc(proposalsTable.createdAt));
@@ -30,16 +42,9 @@ proposalsRouter.get("/proposals/:id", async (req: Request, res: Response) => {
 
   const [proposal] = await db
     .select({
-      id: proposalsTable.id,
-      clientId: proposalsTable.clientId,
-      title: proposalsTable.title,
-      status: proposalsTable.status,
-      totalEstimatedHours: proposalsTable.totalEstimatedHours,
-      grandTotal: proposalsTable.grandTotal,
+      ...allProposalFields,
       proposalData: proposalsTable.proposalData,
-      createdAt: proposalsTable.createdAt,
-      updatedAt: proposalsTable.updatedAt,
-      clientName: clientsTable.companyName,
+      boqData: proposalsTable.boqData,
     })
     .from(proposalsTable)
     .leftJoin(clientsTable, eq(proposalsTable.clientId, clientsTable.id))
@@ -65,33 +70,57 @@ proposalsRouter.patch("/proposals/:id", async (req: Request, res: Response) => {
 
   const validStatuses = ["Draft", "Sent", "Accepted", "Rejected", "Revised"];
   const updates: Record<string, any> = {};
+  const b = req.body;
 
-  if (req.body.title !== undefined) {
-    if (typeof req.body.title !== "string" || !req.body.title.trim()) {
+  if (b.title !== undefined) {
+    if (typeof b.title !== "string" || !b.title.trim()) {
       res.status(400).json({ error: "Title must be a non-empty string" }); return;
     }
-    updates.title = req.body.title.trim();
+    updates.title = b.title.trim();
   }
-  if (req.body.status !== undefined) {
-    if (!validStatuses.includes(req.body.status)) {
+  if (b.status !== undefined) {
+    if (!validStatuses.includes(b.status)) {
       res.status(400).json({ error: `Status must be one of: ${validStatuses.join(", ")}` }); return;
     }
-    updates.status = req.body.status;
+    updates.status = b.status;
   }
-  if (req.body.clientId !== undefined) updates.clientId = req.body.clientId;
-  if (req.body.proposalData !== undefined) {
-    if (!Array.isArray(req.body.proposalData)) {
+  if (b.clientId !== undefined) updates.clientId = b.clientId;
+  if (b.quoteNumber !== undefined) updates.quoteNumber = String(b.quoteNumber);
+  if (b.revision !== undefined) updates.revision = String(b.revision);
+  if (b.projectLocation !== undefined) updates.projectLocation = String(b.projectLocation);
+  if (b.pocName !== undefined) updates.pocName = String(b.pocName);
+  if (b.pocContact !== undefined) updates.pocContact = String(b.pocContact);
+  if (b.scopeOfWork !== undefined) updates.scopeOfWork = String(b.scopeOfWork);
+  if (b.inclusions !== undefined) updates.inclusions = String(b.inclusions);
+  if (b.exclusions !== undefined) updates.exclusions = String(b.exclusions);
+  if (b.validFrom !== undefined) {
+    if (b.validFrom === null || b.validFrom === "") { updates.validFrom = null; }
+    else { const d = new Date(b.validFrom); if (isNaN(d.getTime())) { res.status(400).json({ error: "validFrom must be a valid date" }); return; } updates.validFrom = d; }
+  }
+  if (b.validTo !== undefined) {
+    if (b.validTo === null || b.validTo === "") { updates.validTo = null; }
+    else { const d = new Date(b.validTo); if (isNaN(d.getTime())) { res.status(400).json({ error: "validTo must be a valid date" }); return; } updates.validTo = d; }
+  }
+
+  if (b.proposalData !== undefined) {
+    if (!Array.isArray(b.proposalData)) {
       res.status(400).json({ error: "proposalData must be an array" }); return;
     }
-    updates.proposalData = req.body.proposalData;
+    updates.proposalData = b.proposalData;
   }
-  if (req.body.totalEstimatedHours !== undefined) {
-    const hrs = parseFloat(req.body.totalEstimatedHours);
+  if (b.boqData !== undefined) {
+    if (!Array.isArray(b.boqData)) {
+      res.status(400).json({ error: "boqData must be an array" }); return;
+    }
+    updates.boqData = b.boqData;
+  }
+  if (b.totalEstimatedHours !== undefined) {
+    const hrs = parseFloat(b.totalEstimatedHours);
     if (isNaN(hrs) || hrs < 0) { res.status(400).json({ error: "totalEstimatedHours must be a non-negative number" }); return; }
     updates.totalEstimatedHours = String(hrs);
   }
-  if (req.body.grandTotal !== undefined) {
-    const gt = parseFloat(req.body.grandTotal);
+  if (b.grandTotal !== undefined) {
+    const gt = parseFloat(b.grandTotal);
     if (isNaN(gt) || gt < 0) { res.status(400).json({ error: "grandTotal must be a non-negative number" }); return; }
     updates.grandTotal = String(gt);
   }

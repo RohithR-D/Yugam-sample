@@ -1,5 +1,5 @@
 import { authFetch } from "@/lib/authFetch";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Search,
   Eye,
@@ -14,28 +14,43 @@ import {
   BookOpen,
   BarChart3,
   FolderOpen,
-  ChevronDown,
-  ChevronRight,
   Trash2,
   ArrowLeft,
-  Tag,
   Clock,
   IndianRupee,
   Layers,
   Save,
   PlusCircle,
+  MapPin,
+  User,
+  Phone,
+  ClipboardList,
+  Library,
+  Calculator,
 } from "lucide-react";
 
 type TabType = "proposals" | "catalog" | "analytics";
+type BuilderView = "cover" | "scope" | "investment";
 
 interface ProposalRecord {
   id: number;
   clientId: number | null;
   title: string;
+  quoteNumber: string;
+  revision: string;
   status: string;
+  validFrom: string | null;
+  validTo: string | null;
+  projectLocation: string;
+  pocName: string;
+  pocContact: string;
+  scopeOfWork: string;
+  inclusions: string;
+  exclusions: string;
   totalEstimatedHours: string;
   grandTotal: string;
   proposalData?: any;
+  boqData?: any;
   createdAt: string | null;
   updatedAt: string | null;
   clientName: string | null;
@@ -51,17 +66,22 @@ interface CatalogItem {
   createdAt: string | null;
 }
 
-interface Feature {
+interface BOQItem {
   id: string;
+  itemCode: string;
   description: string;
-  hours: number;
-  rate: number;
-}
-
-interface Category {
-  id: string;
-  name: string;
-  features: Feature[];
+  uom: string;
+  qty: number;
+  baseRate: number;
+  labor: number;
+  machine: number;
+  overhead: number;
+  marginPct: number;
+  discPct: number;
+  taxPct: number;
+  wastagePct: number;
+  freight: number;
+  leadTime: string;
 }
 
 function genId() {
@@ -77,9 +97,19 @@ function formatCurrency(val: string | number) {
   return `₹ ${num.toLocaleString("en-IN")}`;
 }
 
+function formatFullCurrency(val: number) {
+  if (isNaN(val)) return "₹ 0.00";
+  return `₹ ${val.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
 function formatDate(d: string | null) {
   if (!d) return "—";
   return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function toDateInput(d: string | null) {
+  if (!d) return "";
+  try { return new Date(d).toISOString().split("T")[0]; } catch { return ""; }
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -95,6 +125,52 @@ function StatusPill({ status }: { status: string }) {
       {status}
     </span>
   );
+}
+
+function calcRowTotal(item: BOQItem): number {
+  const baseCost = item.qty * item.baseRate;
+  const laborCost = item.labor;
+  const machineCost = item.machine;
+  const overheadCost = item.overhead;
+  const subtotal = baseCost + laborCost + machineCost + overheadCost;
+  const wastageAmt = subtotal * (item.wastagePct / 100);
+  const afterWastage = subtotal + wastageAmt;
+  const marginAmt = afterWastage * (item.marginPct / 100);
+  const afterMargin = afterWastage + marginAmt;
+  const discountAmt = afterMargin * (item.discPct / 100);
+  const afterDisc = afterMargin - discountAmt;
+  const taxAmt = afterDisc * (item.taxPct / 100);
+  return afterDisc + taxAmt + item.freight;
+}
+
+function calcAggregates(items: BOQItem[]) {
+  let baseCost = 0, labor = 0, machine = 0, overheads = 0;
+  let marginAmt = 0, discountAmt = 0, taxAmt = 0, freight = 0;
+
+  items.forEach((item) => {
+    const bc = item.qty * item.baseRate;
+    baseCost += bc;
+    labor += item.labor;
+    machine += item.machine;
+    overheads += item.overhead;
+    const subtotal = bc + item.labor + item.machine + item.overhead;
+    const wastage = subtotal * (item.wastagePct / 100);
+    const afterWastage = subtotal + wastage;
+    const margin = afterWastage * (item.marginPct / 100);
+    marginAmt += margin;
+    const afterMargin = afterWastage + margin;
+    const disc = afterMargin * (item.discPct / 100);
+    discountAmt += disc;
+    const afterDisc = afterMargin - disc;
+    const tax = afterDisc * (item.taxPct / 100);
+    taxAmt += tax;
+    freight += item.freight;
+  });
+
+  const subtotal = baseCost + labor + machine + overheads;
+  const grandTotal = subtotal + marginAmt - discountAmt + taxAmt + freight + items.reduce((s, i) => s + (baseCost > 0 ? (i.qty * i.baseRate + i.labor + i.machine + i.overhead) * (i.wastagePct / 100) : 0), 0);
+
+  return { baseCost, labor, machine, overheads, subtotal, marginAmt, discountAmt, taxAmt, freight, grandTotal: items.reduce((s, i) => s + calcRowTotal(i), 0) };
 }
 
 function ServiceCatalogView() {
@@ -212,83 +288,421 @@ function ServiceCatalogView() {
   );
 }
 
+function CoverDetailsView({ form, setForm, clients }: {
+  form: Record<string, string>;
+  setForm: (f: Record<string, string>) => void;
+  clients: { id: number; companyName: string }[];
+}) {
+  const inputCls = "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors";
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100">
+        <h2 className="text-base font-bold text-gray-800">Cover Details</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Quote identification, client, and point-of-contact information</p>
+      </div>
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-3 gap-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Client</label>
+            <select value={form.clientId} onChange={(e) => setForm({ ...form, clientId: e.target.value })} className={`${inputCls} bg-white`}>
+              <option value="">— Select Client —</option>
+              {clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Quote Number</label>
+            <input type="text" value={form.quoteNumber} onChange={(e) => setForm({ ...form, quoteNumber: e.target.value })} placeholder="e.g., EST-2026-001" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Revision</label>
+            <input type="text" value={form.revision} onChange={(e) => setForm({ ...form, revision: e.target.value })} placeholder="R0" className={inputCls} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Valid From</label>
+            <input type="date" value={form.validFrom} onChange={(e) => setForm({ ...form, validFrom: e.target.value })} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5">Valid To</label>
+            <input type="date" value={form.validTo} onChange={(e) => setForm({ ...form, validTo: e.target.value })} className={inputCls} />
+          </div>
+        </div>
+
+        <div>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5"><MapPin className="w-3 h-3" /> Project Location</label>
+          <input type="text" value={form.projectLocation} onChange={(e) => setForm({ ...form, projectLocation: e.target.value })} placeholder="e.g., Mumbai, Maharashtra" className={inputCls} />
+        </div>
+
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5"><User className="w-3 h-3" /> POC Name</label>
+            <input type="text" value={form.pocName} onChange={(e) => setForm({ ...form, pocName: e.target.value })} placeholder="Point of Contact name" className={inputCls} />
+          </div>
+          <div>
+            <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5"><Phone className="w-3 h-3" /> POC Contact</label>
+            <input type="text" value={form.pocContact} onChange={(e) => setForm({ ...form, pocContact: e.target.value })} placeholder="Email or Phone" className={inputCls} />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1.5">Proposal Title</label>
+          <input type="text" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Cloud Migration & ERP Integration" className={inputCls} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ScopeTermsView({ form, setForm }: {
+  form: Record<string, string>;
+  setForm: (f: Record<string, string>) => void;
+}) {
+  const textareaCls = "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors resize-none";
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <div className="px-6 py-4 border-b border-gray-100">
+        <h2 className="text-base font-bold text-gray-800">Scope & Terms</h2>
+        <p className="text-xs text-gray-400 mt-0.5">Define deliverables, inclusions, and exclusions</p>
+      </div>
+      <div className="p-6 space-y-5">
+        <div>
+          <label className="flex items-center gap-1.5 text-xs font-medium text-gray-500 mb-1.5"><ClipboardList className="w-3 h-3" /> Scope of Work</label>
+          <textarea rows={6} value={form.scopeOfWork} onChange={(e) => setForm({ ...form, scopeOfWork: e.target.value })} placeholder="Describe the full scope of work, deliverables, and milestones..." className={textareaCls} />
+        </div>
+        <div className="grid grid-cols-2 gap-5">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 text-green-600">Inclusions</label>
+            <textarea rows={5} value={form.inclusions} onChange={(e) => setForm({ ...form, inclusions: e.target.value })} placeholder="What is included in this proposal..." className={textareaCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1.5 text-red-500">Exclusions</label>
+            <textarea rows={5} value={form.exclusions} onChange={(e) => setForm({ ...form, exclusions: e.target.value })} placeholder="What is excluded from this proposal..." className={textareaCls} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BOQTable({ boqItems, setBoqItems, catalogItems }: {
+  boqItems: BOQItem[];
+  setBoqItems: (items: BOQItem[]) => void;
+  catalogItems: CatalogItem[];
+}) {
+  const [showLibrary, setShowLibrary] = useState(false);
+
+  const addRow = () => {
+    setBoqItems([...boqItems, {
+      id: genId(),
+      itemCode: "",
+      description: "",
+      uom: "Nos",
+      qty: 1,
+      baseRate: 0,
+      labor: 0,
+      machine: 0,
+      overhead: 0,
+      marginPct: 10,
+      discPct: 0,
+      taxPct: 18,
+      wastagePct: 0,
+      freight: 0,
+      leadTime: "",
+    }]);
+  };
+
+  const updateItem = (id: string, updates: Partial<BOQItem>) => {
+    setBoqItems(boqItems.map((item) => item.id === id ? { ...item, ...updates } : item));
+  };
+
+  const removeItem = (id: string) => {
+    setBoqItems(boqItems.filter((item) => item.id !== id));
+  };
+
+  const addFromLibrary = (cat: CatalogItem) => {
+    setBoqItems([...boqItems, {
+      id: genId(),
+      itemCode: `SVC-${cat.id.toString().padStart(3, "0")}`,
+      description: cat.templateName,
+      uom: "Hrs",
+      qty: parseFloat(cat.baseHours) || 1,
+      baseRate: parseFloat(cat.baseRate) || 0,
+      labor: 0,
+      machine: 0,
+      overhead: 0,
+      marginPct: 10,
+      discPct: 0,
+      taxPct: 18,
+      wastagePct: 0,
+      freight: 0,
+      leadTime: "",
+    }]);
+    setShowLibrary(false);
+  };
+
+  const agg = useMemo(() => calcAggregates(boqItems), [boqItems]);
+
+  const numInputCls = "w-full text-center text-xs bg-transparent border-b border-transparent focus:border-gray-300 outline-none py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none";
+
+  return (
+    <div className="flex gap-4 h-full">
+      <div className="flex-1 min-w-0">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
+            <div>
+              <h2 className="text-base font-bold text-gray-800">Bill of Quantities</h2>
+              <p className="text-xs text-gray-400 mt-0.5">{boqItems.length} line items</p>
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowLibrary(true)} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-purple-600 border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors">
+                <Library className="w-3.5 h-3.5" /> Select from Master Library
+              </button>
+              <button onClick={addRow} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#E31E24] border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
+                <PlusCircle className="w-3.5 h-3.5" /> Add Row
+              </button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="bg-gray-50 text-[10px] text-gray-500 uppercase tracking-wider">
+                  <th className="px-2 py-2.5 text-left font-semibold w-[80px] sticky left-0 bg-gray-50 z-10">Item Code</th>
+                  <th className="px-2 py-2.5 text-left font-semibold min-w-[180px]">Description</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[55px]">UOM</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[55px]">Qty</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[75px]">Base Rate</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[65px]">Labor</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[65px]">Machine</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[55px]">OH</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[52px]">Margin%</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[48px]">Disc%</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[48px]">Tax%</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[55px]">Wstg%</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[65px]">Freight</th>
+                  <th className="px-1.5 py-2.5 text-center font-semibold w-[65px]">Lead Time</th>
+                  <th className="px-2 py-2.5 text-right font-semibold w-[90px]">Total</th>
+                  <th className="w-[32px]"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {boqItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={16} className="text-center py-10 text-gray-400 text-sm">
+                      <Calculator className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+                      No line items. Add from Master Library or create a new row.
+                    </td>
+                  </tr>
+                ) : (
+                  boqItems.map((item) => (
+                    <tr key={item.id} className="border-t border-gray-50 hover:bg-gray-50/50 group transition-colors">
+                      <td className="px-2 py-1.5 sticky left-0 bg-white group-hover:bg-gray-50/50 z-10">
+                        <input type="text" value={item.itemCode} onChange={(e) => updateItem(item.id, { itemCode: e.target.value })} placeholder="CODE" className="w-full text-xs font-mono text-gray-600 bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors" />
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <input type="text" value={item.description} onChange={(e) => updateItem(item.id, { description: e.target.value })} placeholder="Description..." className="w-full text-xs text-gray-700 bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors" />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <select value={item.uom} onChange={(e) => updateItem(item.id, { uom: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none py-1.5 cursor-pointer">
+                          {["Nos", "Hrs", "Sqm", "Sqft", "Rmt", "Kg", "MT", "Ltr", "Set", "Lot", "LS"].map((u) => <option key={u} value={u}>{u}</option>)}
+                        </select>
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.qty || ""} onChange={(e) => updateItem(item.id, { qty: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.baseRate || ""} onChange={(e) => updateItem(item.id, { baseRate: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.labor || ""} onChange={(e) => updateItem(item.id, { labor: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.machine || ""} onChange={(e) => updateItem(item.id, { machine: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.overhead || ""} onChange={(e) => updateItem(item.id, { overhead: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.marginPct || ""} onChange={(e) => updateItem(item.id, { marginPct: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.discPct || ""} onChange={(e) => updateItem(item.id, { discPct: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.taxPct || ""} onChange={(e) => updateItem(item.id, { taxPct: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.wastagePct || ""} onChange={(e) => updateItem(item.id, { wastagePct: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="number" value={item.freight || ""} onChange={(e) => updateItem(item.id, { freight: parseFloat(e.target.value) || 0 })} className={numInputCls} />
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <input type="text" value={item.leadTime} onChange={(e) => updateItem(item.id, { leadTime: e.target.value })} placeholder="—" className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors" />
+                      </td>
+                      <td className="px-2 py-1.5 text-right font-bold text-gray-800 text-xs whitespace-nowrap">
+                        {formatFullCurrency(calcRowTotal(item))}
+                      </td>
+                      <td className="px-1 py-1.5">
+                        <button onClick={() => removeItem(item.id)} className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-[260px] shrink-0">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden sticky top-0">
+          <div className="px-4 py-3.5 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
+            <h3 className="text-sm font-bold text-gray-800">Cost Breakdown</h3>
+          </div>
+          <div className="p-4 space-y-2.5 text-xs">
+            {[
+              { label: "Base Cost", value: agg.baseCost, color: "text-gray-700" },
+              { label: "Labor", value: agg.labor, color: "text-blue-600" },
+              { label: "Machine", value: agg.machine, color: "text-purple-600" },
+              { label: "Overheads", value: agg.overheads, color: "text-orange-600" },
+            ].map((row) => (
+              <div key={row.label} className="flex justify-between items-center">
+                <span className="text-gray-400">{row.label}</span>
+                <span className={`font-semibold ${row.color}`}>{formatFullCurrency(row.value)}</span>
+              </div>
+            ))}
+
+            <div className="border-t border-gray-100 pt-2.5">
+              <div className="flex justify-between items-center font-bold">
+                <span className="text-gray-600">Subtotal</span>
+                <span className="text-gray-800">{formatFullCurrency(agg.subtotal)}</span>
+              </div>
+            </div>
+
+            {[
+              { label: "+ Margin", value: agg.marginAmt, color: "text-green-600" },
+              { label: "− Discount", value: agg.discountAmt, color: "text-red-500" },
+              { label: "+ Tax", value: agg.taxAmt, color: "text-indigo-600" },
+              { label: "+ Freight", value: agg.freight, color: "text-teal-600" },
+            ].map((row) => (
+              <div key={row.label} className="flex justify-between items-center">
+                <span className="text-gray-400">{row.label}</span>
+                <span className={`font-semibold ${row.color}`}>{formatFullCurrency(row.value)}</span>
+              </div>
+            ))}
+
+            <div className="border-t-2 border-[#E31E24]/20 pt-3 mt-2">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-black text-gray-800">Grand Total</span>
+                <span className="text-base font-black text-[#E31E24]">{formatFullCurrency(agg.grandTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {showLibrary && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowLibrary(false)}>
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Master Service Library</h2>
+              <button onClick={() => setShowLibrary(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
+            </div>
+            {catalogItems.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No templates in the catalog yet.</p>
+            ) : (
+              <div className="space-y-2">
+                {catalogItems.map((cat) => (
+                  <button key={cat.id} onClick={() => addFromLibrary(cat)} className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50/30 transition-all text-left">
+                    <div className="p-2 bg-purple-50 rounded-lg shrink-0"><Library className="w-4 h-4 text-purple-500" /></div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800">{cat.templateName}</p>
+                      <p className="text-xs text-gray-400 truncate">{cat.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold text-gray-700">{formatCurrency(parseFloat(cat.baseRate) * parseFloat(cat.baseHours))}</p>
+                      <p className="text-[10px] text-gray-400">{cat.baseHours}h @ ₹{cat.baseRate}/h</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ProposalBuilder({ proposal, onBack, onSave }: {
   proposal?: ProposalRecord;
   onBack: () => void;
   onSave: () => void;
 }) {
-  const [title, setTitle] = useState(proposal?.title || "");
-  const [clientId, setClientId] = useState<string>(proposal?.clientId?.toString() || "");
-  const [categories, setCategories] = useState<Category[]>(() => {
-    if (proposal?.proposalData && Array.isArray(proposal.proposalData)) {
-      return proposal.proposalData as Category[];
+  const [activeView, setActiveView] = useState<BuilderView>("cover");
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [clients, setClients] = useState<{ id: number; companyName: string }[]>([]);
+  const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+
+  const [form, setForm] = useState<Record<string, string>>({
+    title: proposal?.title || "",
+    clientId: proposal?.clientId?.toString() || "",
+    quoteNumber: proposal?.quoteNumber || "",
+    revision: proposal?.revision || "R0",
+    validFrom: toDateInput(proposal?.validFrom || null),
+    validTo: toDateInput(proposal?.validTo || null),
+    projectLocation: proposal?.projectLocation || "",
+    pocName: proposal?.pocName || "",
+    pocContact: proposal?.pocContact || "",
+    scopeOfWork: proposal?.scopeOfWork || "",
+    inclusions: proposal?.inclusions || "",
+    exclusions: proposal?.exclusions || "",
+  });
+
+  const [boqItems, setBoqItems] = useState<BOQItem[]>(() => {
+    if (proposal?.boqData && Array.isArray(proposal.boqData) && proposal.boqData.length > 0) {
+      return proposal.boqData as BOQItem[];
     }
     return [];
   });
-  const [clients, setClients] = useState<{ id: number; companyName: string }[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const [activeSection, setActiveSection] = useState("scope");
 
   useEffect(() => {
-    authFetch("/api/clients?limit=100").then(async (r) => {
-      if (r.ok) { const d = await r.json(); setClients(d.data || []); }
-    }).catch(() => {});
-    setExpandedCats(new Set(categories.map((c) => c.id)));
+    Promise.all([
+      authFetch("/api/clients?limit=100").then(async (r) => r.ok ? (await r.json()).data || [] : []),
+      authFetch("/api/service-catalog").then(async (r) => r.ok ? await r.json() : []),
+    ]).then(([c, s]) => { setClients(c); setCatalogItems(s); }).catch(() => {});
   }, []);
 
-  const addCategory = () => {
-    const newCat: Category = { id: genId(), name: "New Category", features: [] };
-    setCategories([...categories, newCat]);
-    setExpandedCats((prev) => new Set(prev).add(newCat.id));
-  };
-
-  const removeCategory = (catId: string) => {
-    setCategories(categories.filter((c) => c.id !== catId));
-  };
-
-  const updateCategoryName = (catId: string, name: string) => {
-    setCategories(categories.map((c) => c.id === catId ? { ...c, name } : c));
-  };
-
-  const addFeature = (catId: string) => {
-    setCategories(categories.map((c) => c.id === catId ? { ...c, features: [...c.features, { id: genId(), description: "", hours: 0, rate: 2500 }] } : c));
-  };
-
-  const updateFeature = (catId: string, featureId: string, updates: Partial<Feature>) => {
-    setCategories(categories.map((c) => c.id === catId ? { ...c, features: c.features.map((f) => f.id === featureId ? { ...f, ...updates } : f) } : c));
-  };
-
-  const removeFeature = (catId: string, featureId: string) => {
-    setCategories(categories.map((c) => c.id === catId ? { ...c, features: c.features.filter((f) => f.id !== featureId) } : c));
-  };
-
-  const toggleExpand = (catId: string) => {
-    setExpandedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(catId)) next.delete(catId); else next.add(catId);
-      return next;
-    });
-  };
-
-  const getCategoryTotal = (cat: Category) => cat.features.reduce((s, f) => s + f.hours * f.rate, 0);
-  const getCategoryHours = (cat: Category) => cat.features.reduce((s, f) => s + f.hours, 0);
-  const grandTotal = categories.reduce((s, c) => s + getCategoryTotal(c), 0);
-  const totalHours = categories.reduce((s, c) => s + getCategoryHours(c), 0);
-
-  const [saveError, setSaveError] = useState("");
+  const agg = useMemo(() => calcAggregates(boqItems), [boqItems]);
 
   const handleSave = async () => {
-    if (!title.trim()) return;
+    if (!form.title.trim()) { setSaveError("Proposal title is required"); return; }
     setSaving(true);
     setSaveError("");
     try {
-      const body = {
-        title,
-        clientId: clientId ? parseInt(clientId) : null,
-        proposalData: categories,
-        totalEstimatedHours: totalHours,
-        grandTotal,
+      const body: Record<string, any> = {
+        title: form.title,
+        clientId: form.clientId ? parseInt(form.clientId) : null,
+        quoteNumber: form.quoteNumber,
+        revision: form.revision,
+        validFrom: form.validFrom || null,
+        validTo: form.validTo || null,
+        projectLocation: form.projectLocation,
+        pocName: form.pocName,
+        pocContact: form.pocContact,
+        scopeOfWork: form.scopeOfWork,
+        inclusions: form.inclusions,
+        exclusions: form.exclusions,
+        boqData: boqItems,
+        grandTotal: agg.grandTotal,
         status: proposal?.status || "Draft",
       };
 
@@ -308,12 +722,10 @@ function ProposalBuilder({ proposal, onBack, onSave }: {
     } finally { setSaving(false); }
   };
 
-  const sections = [
-    { key: "cover", label: "Cover Page", icon: FileText },
-    { key: "intro", label: "Introduction", icon: BookOpen },
-    { key: "scope", label: "Scope of Work", icon: Layers },
-    { key: "investment", label: "Investment", icon: IndianRupee },
-    { key: "timeline", label: "Timeline", icon: Clock },
+  const sidebarItems: { key: BuilderView; label: string; icon: typeof FileText }[] = [
+    { key: "cover", label: "Cover Details", icon: FileText },
+    { key: "scope", label: "Scope & Terms", icon: ClipboardList },
+    { key: "investment", label: "Investment (BOQ)", icon: Calculator },
   ];
 
   return (
@@ -324,38 +736,26 @@ function ProposalBuilder({ proposal, onBack, onSave }: {
         </button>
         <div className="flex items-center gap-3">
           {saveError && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-1.5">{saveError}</p>}
-          <button onClick={handleSave} disabled={saving || !title.trim()} className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all">
+          <button onClick={handleSave} disabled={saving || !form.title.trim()} className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-md hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all">
             <Save className="w-4 h-4" /> {saving ? "Saving..." : proposal?.id ? "Update Proposal" : "Save Proposal"}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-12 gap-5">
-        <div className="col-span-3 space-y-4">
-          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Proposal Title</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Cloud Migration Project" className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] transition-colors" />
-          </div>
-          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
-            <label className="block text-xs font-medium text-gray-500 mb-1.5">Client (Company)</label>
-            <select value={clientId} onChange={(e) => setClientId(e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] transition-colors bg-white">
-              <option value="">— Select Client —</option>
-              {clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}
-            </select>
-          </div>
-
+      <div className="flex gap-5">
+        <div className="w-[200px] shrink-0 space-y-3">
           <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-gray-100">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Sections</h3>
+              <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Navigation</h3>
             </div>
             <div className="p-1.5">
-              {sections.map((s) => {
+              {sidebarItems.map((s) => {
                 const Icon = s.icon;
                 return (
                   <button
                     key={s.key}
-                    onClick={() => setActiveSection(s.key)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${activeSection === s.key ? "bg-[#E31E24] text-white font-medium shadow-md" : "text-gray-600 hover:bg-gray-50"}`}
+                    onClick={() => setActiveView(s.key)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all ${activeView === s.key ? "bg-[#E31E24] text-white font-medium shadow-md" : "text-gray-600 hover:bg-gray-50"}`}
                   >
                     <Icon className="w-4 h-4" />
                     {s.label}
@@ -365,187 +765,35 @@ function ProposalBuilder({ proposal, onBack, onSave }: {
             </div>
           </div>
 
-          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Summary</h3>
-            <div className="space-y-2">
+          <div className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm space-y-2.5">
+            <h3 className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest">Summary</h3>
+            <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400">Categories</span>
-                <span className="text-sm font-bold text-gray-800">{categories.length}</span>
+                <span className="text-xs text-gray-400">Quote #</span>
+                <span className="text-xs font-bold text-gray-700 truncate max-w-[100px]">{form.quoteNumber || "—"}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-400">Revision</span>
+                <span className="text-xs font-bold text-gray-700">{form.revision || "R0"}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-400">Line Items</span>
-                <span className="text-sm font-bold text-gray-800">{categories.reduce((s, c) => s + c.features.length, 0)}</span>
+                <span className="text-xs font-bold text-gray-700">{boqItems.length}</span>
               </div>
               <div className="border-t border-gray-100 pt-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-xs text-gray-400">Total Hours</span>
-                  <span className="text-sm font-bold text-blue-600">{totalHours.toLocaleString("en-IN")}h</span>
+                  <span className="text-xs text-gray-400">Grand Total</span>
+                  <span className="text-sm font-black text-[#E31E24]">{formatCurrency(agg.grandTotal)}</span>
                 </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-xs text-gray-400">Grand Total</span>
-                <span className="text-base font-bold text-[#E31E24]">{formatCurrency(grandTotal)}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="col-span-9">
-          {(activeSection === "scope" || activeSection === "investment") ? (
-            <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <div>
-                  <h2 className="text-base font-bold text-gray-800">{activeSection === "scope" ? "Scope of Work" : "Investment Breakdown"}</h2>
-                  <p className="text-xs text-gray-400 mt-0.5">Build your hierarchical cost structure: Categories → Features</p>
-                </div>
-                <button onClick={addCategory} className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#E31E24] border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                  <PlusCircle className="w-3.5 h-3.5" /> Add Category
-                </button>
-              </div>
-
-              {categories.length === 0 ? (
-                <div className="text-center py-16">
-                  <Layers className="w-10 h-10 text-gray-200 mx-auto mb-3" />
-                  <p className="text-sm text-gray-400 mb-3">No categories yet. Start building your proposal structure.</p>
-                  <button onClick={addCategory} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-[#E31E24] border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-                    <PlusCircle className="w-4 h-4" /> Add First Category
-                  </button>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {categories.map((cat) => {
-                    const catTotal = getCategoryTotal(cat);
-                    const catHours = getCategoryHours(cat);
-                    const isExpanded = expandedCats.has(cat.id);
-
-                    return (
-                      <div key={cat.id}>
-                        <div
-                          className="flex items-center gap-3 px-5 py-3.5 bg-gray-50/70 cursor-pointer hover:bg-gray-100/50 transition-colors"
-                          onClick={() => toggleExpand(cat.id)}
-                        >
-                          {isExpanded ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                          <input
-                            type="text"
-                            value={cat.name}
-                            onChange={(e) => updateCategoryName(cat.id, e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="flex-1 text-sm font-bold text-gray-800 bg-transparent border-none outline-none focus:bg-white focus:px-2 focus:py-1 focus:rounded focus:border focus:border-gray-200 transition-all"
-                          />
-                          <div className="flex items-center gap-4 text-xs">
-                            <span className="text-gray-400">{catHours}h</span>
-                            <span className="font-bold text-gray-700 min-w-[80px] text-right">{formatCurrency(catTotal)}</span>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); removeCategory(cat.id); }}
-                              className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {isExpanded && (
-                          <div className="px-5 py-2 bg-white">
-                            <table className="w-full text-sm">
-                              <thead>
-                                <tr className="text-xs text-gray-400 uppercase tracking-wider">
-                                  <th className="text-left py-2 pl-8 font-medium">Description</th>
-                                  <th className="text-center py-2 font-medium w-[100px]">Hours</th>
-                                  <th className="text-center py-2 font-medium w-[120px]">Rate (₹/hr)</th>
-                                  <th className="text-right py-2 font-medium w-[110px]">Total</th>
-                                  <th className="w-[40px]"></th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {cat.features.map((f) => (
-                                  <tr key={f.id} className="border-t border-gray-50 group">
-                                    <td className="py-2.5 pl-8">
-                                      <input
-                                        type="text"
-                                        value={f.description}
-                                        onChange={(e) => updateFeature(cat.id, f.id, { description: e.target.value })}
-                                        placeholder="Feature description..."
-                                        className="w-full text-sm text-gray-700 bg-transparent outline-none border-b border-transparent focus:border-gray-300 transition-colors"
-                                      />
-                                    </td>
-                                    <td className="py-2.5 text-center">
-                                      <input
-                                        type="number"
-                                        value={f.hours || ""}
-                                        onChange={(e) => updateFeature(cat.id, f.id, { hours: parseFloat(e.target.value) || 0 })}
-                                        className="w-16 text-center text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md py-1 outline-none focus:border-[#E31E24] transition-colors"
-                                      />
-                                    </td>
-                                    <td className="py-2.5 text-center">
-                                      <input
-                                        type="number"
-                                        value={f.rate || ""}
-                                        onChange={(e) => updateFeature(cat.id, f.id, { rate: parseFloat(e.target.value) || 0 })}
-                                        className="w-20 text-center text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md py-1 outline-none focus:border-[#E31E24] transition-colors"
-                                      />
-                                    </td>
-                                    <td className="py-2.5 text-right text-sm font-semibold text-gray-800">
-                                      {formatCurrency(f.hours * f.rate)}
-                                    </td>
-                                    <td className="py-2.5 text-center">
-                                      <button
-                                        onClick={() => removeFeature(cat.id, f.id)}
-                                        className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                            <button
-                              onClick={() => addFeature(cat.id)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 mt-2 mb-2 ml-6 text-xs text-gray-400 hover:text-[#E31E24] hover:bg-red-50 rounded-md transition-colors"
-                            >
-                              <Plus className="w-3 h-3" /> Add Feature
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {categories.length > 0 && (
-                <div className="px-5 py-4 bg-gray-50 border-t border-gray-200">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-800">Proposal Grand Total</span>
-                    <div className="flex items-center gap-6">
-                      <div className="text-right">
-                        <p className="text-[10px] text-gray-400 uppercase">Total Hours</p>
-                        <p className="text-sm font-bold text-blue-600">{totalHours.toLocaleString("en-IN")}h</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-[10px] text-gray-400 uppercase">Grand Total</p>
-                        <p className="text-lg font-black text-[#E31E24]">{formatCurrency(grandTotal)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-10 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-gray-50 flex items-center justify-center mx-auto mb-4">
-                {activeSection === "cover" && <FileText className="w-7 h-7 text-gray-300" />}
-                {activeSection === "intro" && <BookOpen className="w-7 h-7 text-gray-300" />}
-                {activeSection === "timeline" && <Clock className="w-7 h-7 text-gray-300" />}
-              </div>
-              <h3 className="text-base font-bold text-gray-700 mb-1.5">
-                {sections.find((s) => s.key === activeSection)?.label}
-              </h3>
-              <p className="text-sm text-gray-400 max-w-md mx-auto">
-                This section will contain the {sections.find((s) => s.key === activeSection)?.label.toLowerCase()} content. Use the Scope of Work or Investment sections to build the cost breakdown.
-              </p>
-            </div>
-          )}
+        <div className="flex-1 min-w-0">
+          {activeView === "cover" && <CoverDetailsView form={form} setForm={setForm} clients={clients} />}
+          {activeView === "scope" && <ScopeTermsView form={form} setForm={setForm} />}
+          {activeView === "investment" && <BOQTable boqItems={boqItems} setBoqItems={setBoqItems} catalogItems={catalogItems} />}
         </div>
       </div>
     </div>
@@ -666,7 +914,7 @@ export default function EstimoDashboard() {
   ];
 
   const filtered = proposals.filter(
-    (p) => p.title.toLowerCase().includes(search.toLowerCase()) || (p.clientName || "").toLowerCase().includes(search.toLowerCase())
+    (p) => p.title.toLowerCase().includes(search.toLowerCase()) || (p.clientName || "").toLowerCase().includes(search.toLowerCase()) || (p.quoteNumber || "").toLowerCase().includes(search.toLowerCase())
   );
 
   const tabs: { key: TabType; label: string; icon: typeof FileText }[] = [
@@ -730,7 +978,7 @@ export default function EstimoDashboard() {
         <>
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm">
             <Search className="w-4 h-4 text-gray-400" />
-            <input type="search" placeholder="Search proposals..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-sm outline-none w-full placeholder:text-gray-400" />
+            <input type="search" placeholder="Search proposals or quote numbers..." value={search} onChange={(e) => setSearch(e.target.value)} className="bg-transparent text-sm outline-none w-full placeholder:text-gray-400" />
           </div>
 
           {loading ? (
@@ -744,8 +992,8 @@ export default function EstimoDashboard() {
                   <tr className="bg-gray-50">
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Proposal</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Client</th>
+                    <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Quote #</th>
                     <th className="text-left px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Hours</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Value</th>
                     <th className="text-right px-5 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
@@ -765,8 +1013,8 @@ export default function EstimoDashboard() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-gray-600">{p.clientName || "—"}</td>
+                      <td className="px-5 py-4 text-gray-600 font-mono text-xs">{p.quoteNumber || "—"}</td>
                       <td className="px-5 py-4"><StatusPill status={p.status} /></td>
-                      <td className="px-5 py-4 text-right text-gray-600">{parseFloat(p.totalEstimatedHours || "0").toLocaleString("en-IN")}h</td>
                       <td className="px-5 py-4 text-right font-bold text-gray-800">{formatCurrency(p.grandTotal)}</td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
