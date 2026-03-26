@@ -3,6 +3,8 @@ export * from "./clients";
 export * from "./contacts";
 export * from "./clientActivities";
 export * from "./quotes";
+export * from "./serviceCatalog";
+export * from "./proposals";
 export * from "./invoices";
 export * from "./communications";
 export * from "./employees";
