@@ -12,6 +12,7 @@ import CrewPayDashboard from "@/pages/CrewPayDashboard";
 import OrbitDashboard from "@/pages/OrbitDashboard";
 import EstimoDashboard from "@/pages/EstimoDashboard";
 import BillrDashboard from "@/pages/BillrDashboard";
+import SalesDashboard from "@/pages/SalesDashboard";
 import SyncDashboard from "@/pages/SyncDashboard";
 import VaultDashboard from "@/pages/VaultDashboard";
 import FlexDashboard from "@/pages/FlexDashboard";
@@ -49,6 +50,14 @@ function ModuleView() {
       return <EstimoDashboard />;
     case "Billr":
       return <BillrDashboard />;
+    case "Sales:Overview":
+    case "Sales:Quotation":
+    case "Sales:Proforma Invoice":
+    case "Sales:Sales Order":
+    case "Sales:Invoices":
+    case "Sales:Delivery Challan":
+    case "Sales:Sales Return":
+      return <SalesDashboard />;
     case "Sync":
       return <SyncDashboard />;
     case "Vault":

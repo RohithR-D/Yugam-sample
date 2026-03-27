@@ -24,12 +24,18 @@ import {
   HardDrive,
   Settings,
   LayoutDashboard,
+  ShoppingCart,
+  FileCheck,
+  ClipboardList,
+  FileOutput,
+  RotateCcw,
 } from "lucide-react";
 
 interface Module {
   label: string;
   subtitle: string;
   icon: React.ComponentType<{ className?: string }>;
+  children?: { label: string; icon: React.ComponentType<{ className?: string }> }[];
 }
 
 interface Category {
@@ -44,6 +50,17 @@ const categories: Category[] = [
       { label: "Orbit", subtitle: "CRM", icon: CircleDot },
       { label: "Estimo", subtitle: "Quotes", icon: FileText },
       { label: "Billr", subtitle: "Invoicing", icon: Receipt },
+      {
+        label: "Sales", subtitle: "Sales Hub", icon: ShoppingCart,
+        children: [
+          { label: "Sales:Quotation", icon: FileText },
+          { label: "Sales:Proforma Invoice", icon: FileCheck },
+          { label: "Sales:Sales Order", icon: ClipboardList },
+          { label: "Sales:Invoices", icon: Receipt },
+          { label: "Sales:Delivery Challan", icon: FileOutput },
+          { label: "Sales:Sales Return", icon: RotateCcw },
+        ],
+      },
       { label: "Sync", subtitle: "Comms", icon: MessageSquare },
     ],
   },
@@ -94,6 +111,7 @@ export default function Sidebar() {
     });
     return initial;
   });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({
@@ -101,6 +119,15 @@ export default function Sidebar() {
       [title]: !prev[title],
     }));
   }
+
+  function toggleModule(label: string) {
+    setExpandedModules((prev) => ({
+      ...prev,
+      [label]: !prev[label],
+    }));
+  }
+
+  const isSalesSubActive = activeModule.startsWith("Sales:");
 
   return (
     <aside className="w-[250px] min-w-[250px] h-screen bg-yugam-grey border-r border-gray-200/80 flex flex-col">
@@ -159,8 +186,65 @@ export default function Sidebar() {
               {isExpanded && (
                 <div className="mt-1 space-y-0.5">
                   {category.modules.map((mod) => {
-                    const isActive = activeModule === mod.label;
                     const Icon = mod.icon;
+
+                    if (mod.children) {
+                      const isModExpanded = expandedModules[mod.label];
+                      const isAnySalesChildActive = isSalesSubActive;
+                      return (
+                        <div key={mod.label}>
+                          <button
+                            onClick={() => {
+                              toggleModule(mod.label);
+                              if (!isModExpanded) setActiveModule("Sales:Overview");
+                            }}
+                            className={`w-full flex items-center gap-3 px-3 py-2 text-[13px] transition-all rounded-r-md ${
+                              isAnySalesChildActive
+                                ? "bg-red-50 text-[#E31E24] border-l-[3px] border-[#E31E24] font-semibold"
+                                : "text-gray-600 hover:bg-red-50/60 hover:text-[#E31E24] border-l-[3px] border-transparent"
+                            }`}
+                          >
+                            <Icon className="w-[15px] h-[15px] shrink-0" />
+                            <span className="truncate flex-1 text-left">
+                              {mod.label}
+                              <span className={`ml-1 text-[11px] ${isAnySalesChildActive ? "text-[#E31E24]/60" : "text-gray-400"}`}>
+                                ({mod.subtitle})
+                              </span>
+                            </span>
+                            {isModExpanded ? (
+                              <ChevronDown className="w-3 h-3 shrink-0 text-gray-400" />
+                            ) : (
+                              <ChevronRight className="w-3 h-3 shrink-0 text-gray-400" />
+                            )}
+                          </button>
+                          {isModExpanded && (
+                            <div className="ml-5 mt-0.5 space-y-0.5 border-l-2 border-gray-200 pl-3">
+                              {mod.children.map((child) => {
+                                const ChildIcon = child.icon;
+                                const isChildActive = activeModule === child.label;
+                                const displayLabel = child.label.replace("Sales:", "");
+                                return (
+                                  <button
+                                    key={child.label}
+                                    onClick={() => setActiveModule(child.label)}
+                                    className={`w-full flex items-center gap-2.5 px-2.5 py-1.5 text-[12px] transition-all rounded-md ${
+                                      isChildActive
+                                        ? "bg-[#E31E24]/10 text-[#E31E24] font-semibold"
+                                        : "text-gray-500 hover:bg-red-50/60 hover:text-[#E31E24]"
+                                    }`}
+                                  >
+                                    <ChildIcon className="w-[13px] h-[13px] shrink-0" />
+                                    <span className="truncate">{displayLabel}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    const isActive = activeModule === mod.label;
                     return (
                       <button
                         key={mod.label}
