@@ -29,6 +29,8 @@ import {
   ClipboardList,
   FileOutput,
   RotateCcw,
+  Phone,
+  Calendar,
 } from "lucide-react";
 
 interface Module {
@@ -61,7 +63,14 @@ const categories: Category[] = [
           { label: "Sales:Sales Return", icon: RotateCcw },
         ],
       },
-      { label: "Sync", subtitle: "Comms", icon: MessageSquare },
+      {
+        label: "Sync", subtitle: "Comms", icon: MessageSquare,
+        children: [
+          { label: "Sync:Chats", icon: MessageSquare },
+          { label: "Sync:Calls", icon: Phone },
+          { label: "Sync:Meetings", icon: Calendar },
+        ],
+      },
     ],
   },
   {
@@ -111,7 +120,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({
@@ -126,8 +135,6 @@ export default function Sidebar() {
       [label]: !prev[label],
     }));
   }
-
-  const isSalesSubActive = activeModule.startsWith("Sales:");
 
   return (
     <aside className="w-[250px] min-w-[250px] h-screen bg-yugam-grey border-r border-gray-200/80 flex flex-col">
@@ -190,13 +197,15 @@ export default function Sidebar() {
 
                     if (mod.children) {
                       const isModExpanded = expandedModules[mod.label];
-                      const isAnySalesChildActive = isSalesSubActive;
+                      const isAnySalesChildActive = activeModule.startsWith(mod.label + ":");
                       return (
                         <div key={mod.label}>
                           <button
                             onClick={() => {
                               toggleModule(mod.label);
-                              if (!isModExpanded) setActiveModule("Sales:Overview");
+                              if (!isModExpanded && mod.children && mod.children.length > 0) {
+                                setActiveModule(mod.children[0].label);
+                              }
                             }}
                             className={`w-full flex items-center gap-3 px-3 py-2 text-[13px] transition-all rounded-r-md ${
                               isAnySalesChildActive
@@ -222,7 +231,7 @@ export default function Sidebar() {
                               {mod.children.map((child) => {
                                 const ChildIcon = child.icon;
                                 const isChildActive = activeModule === child.label;
-                                const displayLabel = child.label.replace("Sales:", "");
+                                const displayLabel = child.label.replace(mod.label + ":", "");
                                 return (
                                   <button
                                     key={child.label}

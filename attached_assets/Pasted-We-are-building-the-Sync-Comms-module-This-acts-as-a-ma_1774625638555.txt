@@ -1,0 +1,37 @@
+We are building the 'Sync & Comms' module. This acts as a manual activity tracker for our employees to log client and internal communications. Please use exactly these 3 sub-modules in the sidebar: Chats, Calls, and Meetings.
+
+1. Database Schema (Chat_Messages, Employee_Call_Logs, Employee_Meetings):
+
+Chat_Messages: id, thread_type (Enum: Internal, Client, Supplier), employee_id, message_body, timestamp.
+
+Employee_Call_Logs: id, logged_by_employee (string), client_name (string), call_type (Enum: Inbound, Outbound), duration_minutes (number), call_date, call_outcome (Enum: Interested, Follow-up, Not Interested, Issue Resolved), detailed_notes (text).
+
+Employee_Meetings: id, logged_by_employee (string), client_name (string), meeting_title, meeting_date, start_time, end_time, attendees (string), agenda_and_minutes (text), status (Enum: Scheduled, Completed, Canceled).
+
+2. Sub-module 1: Chats Interface:
+
+Build a Slack-style messaging UI.
+
+Left pane: 3 tabs ('Internal', 'Client', 'Supplier') to filter the conversation list.
+
+Right pane: The active chat window for team communication with message bubbles and a text input field.
+
+3. Sub-module 2: Calls Interface (Manual Logging):
+
+Build a data table showing the history of logged calls.
+
+Crucial UI: Include a prominent 'Log a Call' button at the top.
+
+Log Call Modal: When clicked, open a form with fields for: Client Name, Call Type (dropdown), Duration, Date, Call Outcome (dropdown), and a large textarea for 'Call Notes/Summary'.
+
+Clicking a row in the table should open a side-drawer to read the employee's detailed notes.
+
+4. Sub-module 3: Meetings Interface (Manual Logging):
+
+Build a split view: A calendar on the left, and a list of upcoming/past meetings on the right.
+
+Crucial UI: Include a prominent 'Log / Schedule Meeting' button.
+
+Log Meeting Modal: When clicked, open a form with: Meeting Title, Client Name, Date, Start/End Time, Attendees, and a large textarea for 'Agenda / Meeting Minutes'.
+
+Please implement this exact employee activity logging architecture!

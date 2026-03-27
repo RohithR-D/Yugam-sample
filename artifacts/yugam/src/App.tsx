@@ -58,7 +58,9 @@ function ModuleView() {
     case "Sales:Delivery Challan":
     case "Sales:Sales Return":
       return <SalesDashboard />;
-    case "Sync":
+    case "Sync:Chats":
+    case "Sync:Calls":
+    case "Sync:Meetings":
       return <SyncDashboard />;
     case "Vault":
       return <VaultDashboard />;
