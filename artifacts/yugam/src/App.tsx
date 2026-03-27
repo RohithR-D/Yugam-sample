@@ -62,7 +62,13 @@ function ModuleView() {
     case "Sync:Calls":
     case "Sync:Meetings":
       return <SyncDashboard />;
-    case "Vault":
+    case "Vault:Dashboard":
+    case "Vault:Item & Product Master":
+    case "Vault:Warehouses & Stores":
+    case "Vault:Stock Movements":
+    case "Vault:Material Issue":
+    case "Vault:Store Management":
+    case "Vault:Asset Management":
       return <VaultDashboard />;
     case "Flex":
       return <FlexDashboard />;

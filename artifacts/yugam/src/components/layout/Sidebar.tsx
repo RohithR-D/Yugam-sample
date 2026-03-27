@@ -31,6 +31,9 @@ import {
   RotateCcw,
   Phone,
   Calendar,
+  Warehouse,
+  ArrowLeftRight,
+  Store,
 } from "lucide-react";
 
 interface Module {
@@ -84,7 +87,18 @@ const categories: Category[] = [
   {
     title: "Supply & Production",
     modules: [
-      { label: "Vault", subtitle: "Inventory", icon: Package },
+      {
+        label: "Vault", subtitle: "Inventory", icon: Package,
+        children: [
+          { label: "Vault:Dashboard", icon: LayoutDashboard },
+          { label: "Vault:Item & Product Master", icon: Package },
+          { label: "Vault:Warehouses & Stores", icon: Warehouse },
+          { label: "Vault:Stock Movements", icon: ArrowLeftRight },
+          { label: "Vault:Material Issue", icon: ClipboardList },
+          { label: "Vault:Store Management", icon: Store },
+          { label: "Vault:Asset Management", icon: HardDrive },
+        ],
+      },
       { label: "Flex", subtitle: "Procurement", icon: ShoppingBag },
       { label: "Forge", subtitle: "Production", icon: Factory },
       { label: "Fleet", subtitle: "Logistics", icon: Truck },
@@ -120,7 +134,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({
