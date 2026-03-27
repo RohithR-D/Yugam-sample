@@ -27,6 +27,13 @@ import {
   ClipboardList,
   Library,
   Calculator,
+  Check,
+  ShoppingCart,
+  Package,
+  Wrench,
+  Monitor,
+  HardHat,
+  Code,
 } from "lucide-react";
 
 type TabType = "proposals" | "catalog" | "analytics";
@@ -58,8 +65,11 @@ interface ProposalRecord {
 
 interface CatalogItem {
   id: number;
+  category: string;
+  itemCode: string;
   templateName: string;
   description: string;
+  uom: string;
   tags: string;
   baseHours: string;
   baseRate: string;
@@ -177,7 +187,7 @@ function ServiceCatalogView() {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [formData, setFormData] = useState({ templateName: "", description: "", tags: "", baseHours: "", baseRate: "" });
+  const [formData, setFormData] = useState({ category: "General", itemCode: "", templateName: "", description: "", uom: "Nos", tags: "", baseHours: "", baseRate: "" });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -198,7 +208,7 @@ function ServiceCatalogView() {
       const res = await authFetch("/api/service-catalog", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(formData) });
       if (!res.ok) { const d = await res.json(); setError(d.error || "Failed"); return; }
       setShowModal(false);
-      setFormData({ templateName: "", description: "", tags: "", baseHours: "", baseRate: "" });
+      setFormData({ category: "General", itemCode: "", templateName: "", description: "", uom: "Nos", tags: "", baseHours: "", baseRate: "" });
       await fetchItems();
     } catch { setError("Network error"); } finally { setSubmitting(false); }
   };
@@ -223,6 +233,10 @@ function ServiceCatalogView() {
               <div className="flex items-start justify-between mb-3">
                 <div className="p-2.5 bg-gradient-to-br from-[#E31E24]/10 to-[#E31E24]/5 rounded-lg">
                   <BookOpen className="w-5 h-5 text-[#E31E24]" />
+                </div>
+                <div className="flex items-center gap-2">
+                  {item.itemCode && <span className="text-[9px] font-mono text-gray-400">{item.itemCode}</span>}
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-gray-100 text-gray-500">{item.category || "General"}</span>
                 </div>
               </div>
               <h3 className="text-sm font-bold text-gray-800 mb-1.5">{item.templateName}</h3>
@@ -253,6 +267,18 @@ function ServiceCatalogView() {
               <button onClick={() => setShowModal(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Category</label>
+                  <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors cursor-pointer">
+                    {["General", "Labor", "Materials", "Equipment", "Software"].map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Item Code</label>
+                  <input type="text" value={formData.itemCode} onChange={(e) => setFormData({ ...formData, itemCode: e.target.value })} placeholder="e.g., LAB-006" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
+                </div>
+              </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Template Name</label>
                 <input type="text" required value={formData.templateName} onChange={(e) => setFormData({ ...formData, templateName: e.target.value })} placeholder="e.g., Full Stack Development" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
@@ -261,9 +287,17 @@ function ServiceCatalogView() {
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label>
                 <textarea rows={2} value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Brief description of the service..." className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors resize-none" />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Tags (comma-separated)</label>
-                <input type="text" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="e.g., React, Node.js, PostgreSQL" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">UOM</label>
+                  <select value={formData.uom} onChange={(e) => setFormData({ ...formData, uom: e.target.value })} className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors cursor-pointer">
+                    {["Nos", "Hrs", "Sqm", "Sqft", "Rmt", "Kg", "MT", "Ltr", "Set", "Lot", "LS", "Cum", "Days"].map((u) => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Tags (comma-separated)</label>
+                  <input type="text" value={formData.tags} onChange={(e) => setFormData({ ...formData, tags: e.target.value })} placeholder="e.g., React, Node.js" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -271,7 +305,7 @@ function ServiceCatalogView() {
                   <input type="number" value={formData.baseHours} onChange={(e) => setFormData({ ...formData, baseHours: e.target.value })} placeholder="200" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Hourly Rate (₹)</label>
+                  <label className="block text-xs font-medium text-gray-500 mb-1.5">Base Rate (₹)</label>
                   <input type="number" value={formData.baseRate} onChange={(e) => setFormData({ ...formData, baseRate: e.target.value })} placeholder="2500" className="w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors" />
                 </div>
               </div>
@@ -388,6 +422,213 @@ function ScopeTermsView({ form, setForm }: {
   );
 }
 
+function MasterLibraryDrawer({ catalogItems, onAddToQuote, onClose }: {
+  catalogItems: CatalogItem[];
+  onAddToQuote: (items: CatalogItem[]) => void;
+  onClose: () => void;
+}) {
+  const [activeCategory, setActiveCategory] = useState("All Items");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    catalogItems.forEach((item) => cats.add(item.category || "General"));
+    return ["All Items", ...Array.from(cats).sort()];
+  }, [catalogItems]);
+
+  const categoryIcons: Record<string, typeof Package> = {
+    "All Items": Library,
+    "Labor": HardHat,
+    "Materials": Package,
+    "Equipment": Wrench,
+    "Software": Monitor,
+    "General": Code,
+  };
+
+  const filtered = useMemo(() => {
+    let items = catalogItems;
+    if (activeCategory !== "All Items") {
+      items = items.filter((i) => (i.category || "General") === activeCategory);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      items = items.filter((i) =>
+        i.templateName.toLowerCase().includes(q) ||
+        i.description.toLowerCase().includes(q) ||
+        (i.itemCode || "").toLowerCase().includes(q) ||
+        i.tags.toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }, [catalogItems, activeCategory, searchQuery]);
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const handleAddToQuote = () => {
+    const selected = catalogItems.filter((i) => selectedIds.has(i.id));
+    onAddToQuote(selected);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+
+      <div className="relative ml-auto w-full max-w-4xl bg-white shadow-2xl flex flex-col animate-in slide-in-from-right" style={{ animation: "slideInRight 0.25s ease-out" }}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-50 rounded-lg">
+              <Library className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Master Library</h2>
+              <p className="text-xs text-gray-400">Select items to add to your Bill of Quantities</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="flex flex-1 min-h-0">
+          <div className="w-[200px] border-r border-gray-100 bg-gray-50/50 flex flex-col">
+            <div className="p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search items..."
+                  className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-lg outline-none focus:border-purple-400 focus:ring-1 focus:ring-purple-400/20 transition-colors bg-white"
+                />
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
+              <p className="px-2 py-1.5 text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Categories</p>
+              {categories.map((cat) => {
+                const Icon = categoryIcons[cat] || Package;
+                const count = cat === "All Items"
+                  ? catalogItems.length
+                  : catalogItems.filter((i) => (i.category || "General") === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveCategory(cat)}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all mb-0.5 ${
+                      activeCategory === cat
+                        ? "bg-purple-600 text-white font-medium shadow-md"
+                        : "text-gray-600 hover:bg-white hover:shadow-sm"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="flex-1 text-left truncate">{cat}</span>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                      activeCategory === cat ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"
+                    }`}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col min-w-0">
+            <div className="flex-1 overflow-y-auto">
+              {filtered.length === 0 ? (
+                <div className="text-center py-16">
+                  <Package className="w-10 h-10 text-gray-200 mx-auto mb-3" />
+                  <p className="text-sm text-gray-400">No items found in this category</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-white z-10">
+                    <tr className="border-b border-gray-200">
+                      <th className="w-[44px] px-4 py-3"></th>
+                      <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Item Code</th>
+                      <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Description</th>
+                      <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Category</th>
+                      <th className="px-3 py-3 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider w-[60px]">UOM</th>
+                      <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider w-[100px]">Base Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map((item) => {
+                      const isSelected = selectedIds.has(item.id);
+                      return (
+                        <tr
+                          key={item.id}
+                          onClick={() => toggleSelect(item.id)}
+                          className={`border-b border-gray-50 cursor-pointer transition-colors ${
+                            isSelected ? "bg-purple-50/60" : "hover:bg-gray-50"
+                          }`}
+                        >
+                          <td className="px-4 py-3">
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                              isSelected
+                                ? "bg-purple-600 border-purple-600"
+                                : "border-gray-300 hover:border-purple-400"
+                            }`}>
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3 font-mono text-xs text-gray-500">{item.itemCode || `CAT-${item.id.toString().padStart(3, "0")}`}</td>
+                          <td className="px-3 py-3">
+                            <p className="font-medium text-gray-800 text-sm">{item.templateName}</p>
+                            <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">{item.description}</p>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-gray-100 text-gray-500">{item.category || "General"}</span>
+                          </td>
+                          <td className="px-3 py-3 text-center text-xs text-gray-500">{item.uom || "Nos"}</td>
+                          <td className="px-3 py-3 text-right font-bold text-gray-800 text-sm">₹{parseFloat(item.baseRate).toLocaleString("en-IN")}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {selectedIds.size > 0 && (
+              <div className="border-t border-gray-200 bg-white px-6 py-3.5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-50">
+                    <ShoppingCart className="w-4 h-4 text-purple-600" />
+                    <span className="text-sm font-bold text-purple-700">{selectedIds.size}</span>
+                  </div>
+                  <span className="text-sm text-gray-500">item{selectedIds.size !== 1 ? "s" : ""} selected</span>
+                  <button onClick={() => setSelectedIds(new Set())} className="text-xs text-gray-400 hover:text-red-500 underline transition-colors ml-1">Clear all</button>
+                </div>
+                <button
+                  onClick={handleAddToQuote}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/20 transition-all"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Add to Quote
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes slideInRight {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 function BOQTable({ boqItems, setBoqItems, catalogItems }: {
   boqItems: BOQItem[];
   setBoqItems: (items: BOQItem[]) => void;
@@ -423,13 +664,13 @@ function BOQTable({ boqItems, setBoqItems, catalogItems }: {
     setBoqItems(boqItems.filter((item) => item.id !== id));
   };
 
-  const addFromLibrary = (cat: CatalogItem) => {
-    setBoqItems([...boqItems, {
+  const handleAddFromLibrary = (selectedCatalogItems: CatalogItem[]) => {
+    const newItems: BOQItem[] = selectedCatalogItems.map((cat) => ({
       id: genId(),
-      itemCode: `SVC-${cat.id.toString().padStart(3, "0")}`,
+      itemCode: cat.itemCode || `CAT-${cat.id.toString().padStart(3, "0")}`,
       description: cat.templateName,
-      uom: "Hrs",
-      qty: parseFloat(cat.baseHours) || 1,
+      uom: cat.uom || "Nos",
+      qty: 1,
       baseRate: parseFloat(cat.baseRate) || 0,
       labor: 0,
       machine: 0,
@@ -440,8 +681,8 @@ function BOQTable({ boqItems, setBoqItems, catalogItems }: {
       wastagePct: 0,
       freight: 0,
       leadTime: "",
-    }]);
-    setShowLibrary(false);
+    }));
+    setBoqItems([...boqItems, ...newItems]);
   };
 
   const agg = useMemo(() => calcAggregates(boqItems), [boqItems]);
@@ -508,7 +749,7 @@ function BOQTable({ boqItems, setBoqItems, catalogItems }: {
                       </td>
                       <td className="px-1 py-1.5">
                         <select value={item.uom} onChange={(e) => updateItem(item.id, { uom: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none py-1.5 cursor-pointer">
-                          {["Nos", "Hrs", "Sqm", "Sqft", "Rmt", "Kg", "MT", "Ltr", "Set", "Lot", "LS"].map((u) => <option key={u} value={u}>{u}</option>)}
+                          {["Nos", "Hrs", "Sqm", "Sqft", "Rmt", "Kg", "MT", "Ltr", "Set", "Lot", "LS", "Cum", "Days"].map((u) => <option key={u} value={u}>{u}</option>)}
                         </select>
                       </td>
                       <td className="px-1 py-1.5">
@@ -609,33 +850,11 @@ function BOQTable({ boqItems, setBoqItems, catalogItems }: {
       </div>
 
       {showLibrary && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowLibrary(false)}>
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl max-h-[70vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Master Service Library</h2>
-              <button onClick={() => setShowLibrary(false)} className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"><X className="w-4 h-4" /></button>
-            </div>
-            {catalogItems.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No templates in the catalog yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {catalogItems.map((cat) => (
-                  <button key={cat.id} onClick={() => addFromLibrary(cat)} className="w-full flex items-center gap-3 p-3.5 rounded-xl border border-gray-100 hover:border-red-200 hover:bg-red-50/30 transition-all text-left">
-                    <div className="p-2 bg-purple-50 rounded-lg shrink-0"><Library className="w-4 h-4 text-purple-500" /></div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800">{cat.templateName}</p>
-                      <p className="text-xs text-gray-400 truncate">{cat.description}</p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-xs font-bold text-gray-700">{formatCurrency(parseFloat(cat.baseRate) * parseFloat(cat.baseHours))}</p>
-                      <p className="text-[10px] text-gray-400">{cat.baseHours}h @ ₹{cat.baseRate}/h</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <MasterLibraryDrawer
+          catalogItems={catalogItems}
+          onAddToQuote={handleAddFromLibrary}
+          onClose={() => setShowLibrary(false)}
+        />
       )}
     </div>
   );
