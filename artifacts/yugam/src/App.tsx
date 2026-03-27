@@ -70,7 +70,14 @@ function ModuleView() {
     case "Vault:Store Management":
     case "Vault:Asset Management":
       return <VaultDashboard />;
-    case "Flex":
+    case "Flex:Material Requests":
+    case "Flex:Purchase Requests":
+    case "Flex:Quotation Requests":
+    case "Flex:Quotation Validations":
+    case "Flex:Purchase Orders":
+    case "Flex:Goods Receipts":
+    case "Flex:Purchase Invoices":
+    case "Flex:Purchase Returns":
       return <FlexDashboard />;
     case "Forge":
       return <ForgeDashboard />;

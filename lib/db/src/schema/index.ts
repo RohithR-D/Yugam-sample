@@ -25,6 +25,7 @@ export * from "./stockMovements";
 export * from "./materialIndents";
 export * from "./assets";
 export * from "./purchaseOrders";
+export * from "./procurementRequests";
 export * from "./productionOrders";
 export * from "./shipments";
 export * from "./projects";

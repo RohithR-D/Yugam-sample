@@ -1,0 +1,38 @@
+We are building the 'Flex' (Procurement) module for our ERP. This handles the entire Procure-to-Pay lifecycle. Do not add any extra sub-modules.
+
+1. Navigation (Sidebar Structure):
+Create a new top-level parent menu called 'Flex'. It must contain EXACTLY these 8 sub-modules in this exact order:
+
+Material Requests
+
+Purchase Requests
+
+Quotation Requests
+
+Quotation Validations
+
+Purchase Orders
+
+Goods Receipts
+
+Purchase Invoices
+
+Purchase Returns
+
+2. Core Sub-module UIs & Logic:
+
+Material Requests & Purchase Requests (PR): Build data tables showing internal demands. Include a 'Create PR' modal with fields: Item, Requested Qty, Required By Date, and Project/Department. Status pills: Pending, Approved, Rejected.
+
+Quotation Requests (RFQ): A UI to convert an approved PR into an RFQ. Include a multi-select dropdown to assign multiple Vendors to the request.
+
+Quotation Validations: Build a comparative matrix UI. It should display a grid comparing bids side-by-side (Vendor A vs. Vendor B vs. Vendor C) showing Unit Price, Tax, and Lead Time. Include a prominent 'Approve & Create PO' button under the winning vendor.
+
+Purchase Orders (PO): A heavy document-builder UI similar to our Sales Invoice builder. Must include: Vendor Selection, PO Date, Delivery Date. Line Items table must include: Item, Qty, Rate, localized tax columns (CGST %, SGST %, IGST %), and Total Amount. Include a 'Terms & Conditions' text area and a 'Generate PDF' button.
+
+Goods Receipts (GRN): A ledger table for received shipments. Include a 'Log Receipt' modal that pulls data from an approved PO. Crucial UI: Show 'Ordered Qty' alongside an input for 'Received Qty' to handle partial deliveries.
+
+Purchase Invoices: A table to log vendor bills. Include a '3-Way Match' visual indicator (matching PO vs. GRN vs. Invoice Amount) before marking as 'Approved for Payment'.
+
+Purchase Returns (Debit Notes): A simple UI to log items sent back to the vendor, including fields for Returned Qty, Reason (Damage/Wrong Item), and the linked PO/GRN number.
+
+Please implement this exact 8-part procurement architecture with a clean, data-dense, industrial layout
