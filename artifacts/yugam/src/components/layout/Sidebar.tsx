@@ -112,7 +112,17 @@ const categories: Category[] = [
           { label: "Flex:Purchase Returns", icon: RotateCcw },
         ],
       },
-      { label: "Forge", subtitle: "Production", icon: Factory },
+      {
+        label: "Forge", subtitle: "Production", icon: Factory,
+        children: [
+          { label: "Forge:Production Dashboard", icon: LayoutDashboard },
+          { label: "Forge:Bill of Materials", icon: ClipboardList },
+          { label: "Forge:Workstations & Routing", icon: Factory },
+          { label: "Forge:Work Orders", icon: ListChecks },
+          { label: "Forge:Quality Control", icon: Shield },
+          { label: "Forge:Downtime Logs", icon: Calendar },
+        ],
+      },
       { label: "Fleet", subtitle: "Logistics", icon: Truck },
     ],
   },
@@ -146,7 +156,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({

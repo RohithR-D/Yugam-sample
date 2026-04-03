@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a pnpm workspace monorepo using TypeScript, designed for the Yugam ERP system. It includes a robust Express API server, a comprehensive React frontend, and shared libraries for database interactions, API specifications, and generated clients. The project aims to provide a full-fledged Enterprise Resource Planning solution with modules for HR, Sales, CRM, Invoicing, Inventory, Production, and Analytics, catering to diverse business needs with a modern and scalable architecture.
+This pnpm monorepo houses the Yugam ERP system, a comprehensive enterprise resource planning solution built with TypeScript. It integrates an Express API, a React frontend, and shared libraries for database and API management. Yugam ERP aims to streamline business operations across various modules including HR, Sales, CRM, Invoicing, Inventory, Production, and Analytics, offering a scalable and modern platform for diverse business needs.
 
 ## User Preferences
 
@@ -10,65 +10,57 @@ I want iterative development. I prefer detailed explanations. Ask before making 
 
 ## System Architecture
 
-The project is structured as a pnpm monorepo, facilitating shared code and dependency management.
+The project is structured as a pnpm monorepo to manage shared code and dependencies efficiently.
 
 **Monorepo Structure:**
-- `artifacts/`: Contains deployable applications (`api-server`, `yugam`).
-- `lib/`: Houses shared libraries (`api-spec`, `api-client-react`, `api-zod`, `db`).
-- `scripts/`: Utility scripts.
+- `artifacts/`: Deployable applications (API server, frontend).
+- `lib/`: Shared libraries (API specifications, database access, generated clients).
 
 **Core Technologies:**
-- **Backend:** Node.js 24, Express 5, TypeScript 5.9.
+- **Backend:** Node.js, Express, TypeScript.
 - **Frontend:** React, Vite, Tailwind CSS.
 - **Database:** PostgreSQL with Drizzle ORM.
-- **Validation:** Zod for schema validation.
-- **API Generation:** Orval for OpenAPI spec-driven client and schema generation.
-- **Build Tool:** esbuild for efficient bundling.
+- **Validation:** Zod.
+- **API Generation:** Orval for OpenAPI spec-driven code generation.
 
 **TypeScript & Composite Projects:**
-- Utilizes TypeScript composite projects with `composite: true` in `tsconfig.base.json` for optimized type-checking and build processes across packages.
-- Root `tsconfig.json` manages project references to ensure correct cross-package type resolution and build order.
+- Utilizes TypeScript composite projects for optimized type-checking and build processes across packages, ensuring correct cross-package type resolution.
 
 **API Server (`@workspace/api-server`):**
-- Express 5 based API server.
-- Routes are organized in `src/routes/` and leverage `@workspace/api-zod` for request/response validation and `@workspace/db` for persistence.
-- **Authentication:** JWT-based authentication with login, user profile (`/api/auth/me`), and protected routes.
-- **Global Search:** Unified search across multiple entities (clients, employees, projects, etc.) via `GET /api/search?q=`.
-- **Pagination:** Standardized pagination (page, limit) for list endpoints.
-- **Analytics:** Dedicated endpoints for financial trends and operational statistics.
-- Comprehensive set of RESTful APIs for all ERP modules (users, clients, invoices, employees, inventory, projects, tasks, etc.).
+- Express 5 based API with routes organized for modularity.
+- Integrates `@workspace/api-zod` for request/response validation and `@workspace/db` for data persistence.
+- Features JWT authentication, global search capabilities, standardized pagination, and dedicated analytics endpoints.
+- Provides comprehensive RESTful APIs for all ERP modules.
 
 **Database Layer (`@workspace/db`):**
-- Drizzle ORM with PostgreSQL.
-- Exports a Drizzle client and a comprehensive schema, including models for users, clients, invoices, employees, inventory, projects, tasks, transactions, and more.
-- Drizzle Kit for schema migrations.
+- Uses Drizzle ORM with PostgreSQL, including a comprehensive schema for all ERP entities.
+- Drizzle Kit is used for schema migrations.
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
-- OpenAPI 3.1 specification (`openapi.yaml`) defines the API.
-- Orval is used to generate:
-    - React Query hooks and a fetch client (`@workspace/api-client-react`).
-    - Zod schemas for API validation (`@workspace/api-zod`).
+- OpenAPI 3.1 specification defines the API contract.
+- Orval generates React Query hooks, a fetch client, and Zod schemas for API validation based on the OpenAPI spec.
 
 **Frontend (`@workspace/yugam`):**
 - React, Vite, and Tailwind CSS application.
 - **UI/UX:**
-    - **Theme:** `yugam-red` (#E31E24) as primary accent, `yugam-grey` (#F8F9FA) for surfaces, pure white for background.
+    - **Theme:** `yugam-red` (#E31E24) accent, `yugam-grey` (#F8F9FA) surfaces, white background.
     - **Font:** Inter (sans-serif).
-    - **Layout:** Full-screen layout with a fixed 250px sidebar, 60px top header, and a flexible main content area.
-    - **Components:** Reusable layout components for `MainLayout`, `Sidebar`, and `Header`.
-- **Authentication:** `AuthContext` handles JWT token storage (localStorage), with a dedicated `LoginPage`. `authFetch` wrapper manages token attachment and 401 handling.
-- **Global Search:** Integrated search bar in the header with debounced API calls and a categorized command palette dropdown.
-- **Pagination:** Server-side pagination implementation in data tables.
-- **Advanced Analytics:** Vision module features interactive dashboards using `recharts` to visualize financial trends, operational statistics, and project/invoice statuses, powered by live data from API endpoints.
-- **Navigation:** Icon-based navigation for HR Management, Sales Hub, and Settings modules.
-- **Orbit CRM (Relational):** Upgraded from flat list to relational CRM with three tabs: Pipeline (drag-drop Kanban with Lead/Contacted/Proposal/Won/Lost stages, PATCH updates), Clients Directory (paginated table), Contacts Directory (paginated table with company join). Client profile deep-dive shows company details, linked contacts, and chronological activity timeline with note logging. Schema: `clients` (company_name, industry, pipeline_status, deal_value), `contacts` (name, email, phone, contact_type, client_id FK), `client_activities` (client_id FK, activity_type, notes). APIs: GET/POST/PATCH `/api/clients`, GET `/api/clients/:id`, GET/POST `/api/contacts`, GET/POST `/api/client-activities`.
-- **Estimo CPQ Engine:** Full Configure-Price-Quote system with industrial BOQ engine. Schema: `service_catalog` (category, item_code, template_name, description, uom, tags, base_hours, base_rate), `proposals` (client_id FK, title, quote_number, revision, valid_from, valid_to, project_location, poc_name, poc_contact, scope_of_work, inclusions, exclusions, boq_data JSONB, grand_total, proposal_data JSONB). API: CRUD `/api/service-catalog`, full CRUD `/api/proposals` (GET list with client join, GET by id with boqData, POST, PATCH with field+date validation, DELETE). Frontend: 3-tab outer layout (Proposals table, Service Catalog grid with category/itemCode badges, Analytics). ProposalBuilder: state-driven 3-view architecture — Cover Details (client, quote#, revision, dates, location, POC), Scope & Terms (scope, inclusions, exclusions), Investment BOQ (split-view: left = wide data table with Item Code/Description/UOM/Qty/Base Rate/Labor/Machine/OH/Margin%/Disc%/Tax%/Wastage%/Freight/Lead Time/Total; right = fixed Cost Breakdown sidebar aggregating Base Cost/Labor/Machine/Overheads/Subtotal/Margin/Discount/Tax/Freight/Grand Total). Master Library: two-pane "Add to Cart" drawer — left pane with vertical category menu (All Items/Labor/Materials/Equipment/Software with icons and counts) + search input; right pane with multi-select item table (checkbox, Item Code, Description, Category, UOM, Base Rate); sticky bottom bar shows selected count with cart icon + "Add to Quote" button; batch-adds selected items as BOQ rows with Qty=1 carrying over itemCode/description/uom/baseRate. Service Catalog "Add Template" form captures category/itemCode/uom. Math engine: instant per-row and aggregate recalculation on every cell change.
-- **Billr Financial Engine:** GST-compliant invoicing module with 4 sub-modules via tab navigation. Schema: `invoices` (client_id FK, type [Tax/Proforma/Credit], document_number, po_reference, issue_date, due_date, subtotal, discount_amount, sgst_total, cgst_total, grand_total, balance_due, notes, terms, reason_for_credit, invoice_reference, status), `invoice_items` (invoice_id FK cascade, description, hsn_sac, qty, unit, rate, tax_percentage, tax_amount, line_total), `receipts` (client_id FK, payment_date, payment_number, amount_received, bank_charges, payment_mode, deposit_to, reference, tax_deducted). API: full CRUD `/api/invoices` (GET with ?type= filter, GET /:id with joined items, POST with nested items, PATCH with item replacement, DELETE cascade), GET/POST/DELETE `/api/receipts`. Frontend: 4-tab navigation (Tax Invoices, Proformas, Receipts, Credit Notes) with data tables (Date, Document#, Customer, Status pill, Amount, Balance Due). Document Builder: full-screen reusable form for all invoice types — split header (Billed By static company info / Billed To client dropdown + right side with Doc#, dates, PO/Invoice Reference for credit notes, Reason dropdown for credits), Line Items table (Items, HSN/SAC, Qty, Unit, Rate, Tax%, Tax Amt, Amount with auto-calc), Summary panel (Sub Total, editable Discount, SGST, CGST, Grand Total), Notes & Terms textareas, Cancel/Save Draft/Save & Send actions. Receipt Drawer: right slide-out with Customer, Payment Received, Bank Charges, Payment Date, Payment Number, Payment Mode, Deposit To, Reference, TDS toggle.
-- **Sales Module:** Complete Sales Hub with 6 sub-modules accessible via expandable sidebar navigation. Schema: `sales_documents` (client_id FK, client_name, document_type enum [Quotation/Proforma Invoice/Sales Order/Invoice/Delivery Challan/Sales Return], document_number, issue_date, due_date, subtotal, sgst_total, cgst_total, grand_total, notes, terms, status [Paid/Unpaid/Drafting]), `sales_document_items` (document_id FK cascade, description, hsn_sac, qty, rate, cgst_percentage, sgst_percentage, line_total). API: full CRUD `/api/sales-documents` (GET with ?type= filter, GET /:id with joined items, transactional POST/PATCH with item replacement, DELETE). Sidebar: "Sales" entry in "Front Office & Sales" category expands to show 6 sub-modules in order (Quotation, Proforma Invoice, Sales Order, Invoices, Delivery Challan, Sales Return). Overview Dashboard: 4 metric cards (Total Sales, Total Paid, Total Unpaid, Drafting Invoice) + donut chart "Total Invoice Status" (Paid/Unpaid/Drafting) + Recent Invoices list. Unified Document Builder: Billed By (static company info) + Billed To (client selector), line items table (Item, HSN/SAC, Qty, Rate, CGST%, SGST%, Tax Amount, Total Amount), dynamic summary (Sub Total, CGST, SGST, Grand Total), Notes & Terms, Save Draft / Save & Send actions.
-- **Sync & Comms Module:** Complete employee activity tracker with 3 sub-modules via expandable sidebar. Schema: `chat_messages` (thread_type [Internal/Client/Supplier], employee_id, sender_name, message_body, timestamp), `employee_call_logs` (logged_by_employee, client_name, call_type [Inbound/Outbound], duration_minutes, call_date, call_outcome [Interested/Follow-up/Not Interested/Issue Resolved], detailed_notes), `employee_meetings` (logged_by_employee, client_name, meeting_title, meeting_date, start_time, end_time, attendees, agenda_and_minutes, status [Scheduled/Completed/Canceled]). API: GET/POST `/api/chat-messages` (?threadType= filter), CRUD `/api/call-logs`, CRUD `/api/meetings` (PATCH with status validation). Frontend Chats: Slack-style split-pane UI — left pane with 3 tabs (Internal/Client/Supplier) + channel list, right pane with message bubbles and text input. Frontend Calls: data table with search, "Log a Call" button opening modal (Employee, Client, Type dropdown, Duration, Date, Outcome dropdown, Notes textarea), clickable rows opening side-drawer with detailed notes. Frontend Meetings: split view — calendar on left with event dots, right side with Upcoming/Scheduled and Past/Completed lists, "Log / Schedule Meeting" modal (Title, Employee, Client, Date, Start/End Time, Attendees, Status, Agenda textarea).
-- **Vault Inventory Module:** Complete inventory management with 7 sub-modules via expandable sidebar. Schemas: `inventory_catalog` (name, sku, category, item_type [Raw Material/Finished Product], hsn_sac, unit_price, uom, global_stock, reorder_level), `inventory_locations` (location_name, location_type [Warehouse/Store], capacity, manager, address), `stock_ledger` (item_id FK, location_id FK, quantity, updated_at), `stock_movements` (item_id FK, movement_type [Inward/Outward/Transfer/Adjustment], quantity, from_location_id, to_location_id, reference_number, notes, performed_by, movement_date), `material_indents` (item_id FK, requested_qty, approved_qty, issued_from_location_id, requested_by, department, purpose, status [Pending/Approved/Issued/Rejected], request_date, issue_date), `assets` (asset_name, serial_number, category, status [Active/Allocated/Maintenance/Sold], assigned_to, purchase_value, purchase_date, maintenance_notes). API: CRUD `/api/vault/catalog`, `/api/vault/locations`, GET `/api/vault/stock-ledger`, transactional POST `/api/vault/movements` (validates movement type requirements, updates stock_ledger + global_stock atomically), CRUD `/api/vault/indents` + atomic POST `/api/vault/indents/:id/issue` (updates indent + creates outward movement + adjusts stock in single transaction), CRUD `/api/vault/assets`, GET `/api/vault/dashboard-summary`. Frontend: 7 sub-modules — Dashboard (4 metric cards + category pie chart + recent movements feed), Item & Product Master (searchable table + add modal), Warehouses & Stores (location table + add modal), Stock Movements (ledger table + record movement modal with type-conditional fields), Material Issue (pending/issued tabs + create indent + atomic issue modal), Store Management (store cards + finished product table + sale modal), Asset Management (searchable table + add modal + allocate/maintenance/delete actions).
-- **Flex Procurement Module:** Complete procurement lifecycle with 8 sub-modules via expandable sidebar. Schemas: `material_requests` (item_name, requested_qty, required_by_date, department, project, requested_by, status [Pending/Approved/Rejected]), `purchase_requests` (material_request_id FK, item_name, requested_qty, estimated_unit_price, status [Pending/Approved/Rejected/Converted]), `rfq_requests` (purchase_request_id FK, rfq_number, item_name, quantity, vendors JSON, status [Open/Received/Closed]), `rfq_bids` (rfq_id FK, vendor_name, unit_price, tax_percent, lead_time_days, selected [Yes/No]), `flex_purchase_orders` (po_number, vendor_name, rfq_id FK, subtotal/cgst/sgst/igst/grand_total, status [Draft/Sent/Acknowledged/Closed]), `flex_po_items` (po_id FK, description, hsn_sac, qty, rate, cgst/sgst/igst_percent, line_total), `goods_receipts` (grn_number, po_id FK, vendor_name, received_date, received_by, status [Pending/Partial/Complete]), `grn_items` (grn_id FK, description, ordered_qty, received_qty, accepted_qty, rejected_qty), `purchase_invoices` (invoice_number, vendor_name, po_id FK, grn_id FK, invoice_amount, po_amount, grn_amount, match_status [Pending/Matched/Mismatch/Partial], payment_status [Unpaid/Approved/Paid]), `purchase_returns` (return_number, vendor_name, po_id FK, grn_id FK, item_name, returned_qty, reason, status [Initiated/Credited]). API: CRUD `/api/flex/material-requests`, `/api/flex/purchase-requests`, `/api/flex/rfqs`, POST/GET `/api/flex/rfq-bids`, PATCH `/api/flex/rfq-bids/:id/select`, transactional CRUD `/api/flex/purchase-orders` (with line items), transactional POST + PATCH `/api/flex/goods-receipts`, CRUD `/api/flex/purchase-invoices`, CRUD `/api/flex/purchase-returns`. Atomic-strict item validation: invalid line items abort transaction with 400. Frontend: 8 sub-modules — Material Requests (table + create modal + approve/reject), Purchase Requests (linked to MR with auto-fill), Quotation Requests (RFQ with multi-vendor tag input), Quotation Validations (bid comparison cards + Select Winner + Approve & Create PO auto-generation), Purchase Orders (PO Builder with line items + CGST/SGST/IGST tax columns + auto-calc summary), Goods Receipts (GRN with ordered vs received qty comparison + Partial/Complete status logic), Purchase Invoices (3-way match indicator PO vs GRN vs Invoice with approve/pay workflow), Purchase Returns (debit notes with reason classification).
-- **Full-stack Modules:** Implements 21 complete modules covering Dashboard, User Management, CRM, Quoting, Invoicing, Communications, Employee Management, Recruitment, Payroll, Inventory, Procurement, Production, Logistics, Project Management, Task Management, Accounting, Expense Tracking, Contract Management, Analytics, Visitor Management, and File Storage.
+    - **Layout:** Full-screen with a fixed sidebar (250px), top header (60px), and flexible content area.
+    - Reusable layout components for consistent UI.
+- **Authentication:** `AuthContext` manages JWT tokens; `authFetch` handles token attachment and error responses.
+- **Global Search:** Debounced search bar with a categorized command palette.
+- **Pagination:** Server-side pagination for data tables.
+- **Advanced Analytics:** Interactive dashboards with `recharts` for visualizing business trends.
+- **Navigation:** Icon-based sidebar navigation for key modules.
+- **Orbit CRM:** Relational CRM with Kanban view for pipeline, client/contact directories, and activity timelines.
+- **Estimo CPQ Engine:** Configurable Price Quote system with industrial Bill of Quantity (BOQ) engine, including proposal builder and service catalog management.
+- **Billr Financial Engine:** GST-compliant invoicing module supporting various invoice types, receipts, and credit notes with a full-screen document builder.
+- **Sales Module:** Comprehensive sales hub with sub-modules for quotations, sales orders, and delivery challans, featuring a unified document builder.
+- **Sync & Comms Module:** Employee activity tracker for chats, call logs, and meetings, with Slack-style chat UI and calendar views.
+- **Vault Inventory Module:** Complete inventory management system covering catalog, locations, stock movements, material indents, and asset management.
+- **Flex Procurement Module:** Manages the full procurement lifecycle from material requests to purchase orders, goods receipts, and purchase invoices, with 3-way matching.
+- **Forge Production Module:** Manufacturing/production management with 6 sub-modules: Production Dashboard (OEE/yield/scrap metrics), Bill of Materials (BOM builder with material lines and routing steps), Workstations & Routing (card grid with status/utilization), Work Orders (Kanban: Draft→In Progress→QC→Completed), Quality Control (inspection ledger with pass rates), and Downtime Logs (reason-coded stoppages with auto-calculated minutes). DB tables: forge_workstations, forge_bom, forge_bom_materials, forge_bom_routing, forge_work_orders, forge_quality_control, forge_downtime_logs.
+- **Full-stack Modules:** Implements 21 comprehensive modules covering key ERP functionalities like CRM, Quoting, Invoicing, Inventory, Procurement, Production, and Analytics.
 
 ## External Dependencies
 
@@ -83,5 +75,4 @@ The project is structured as a pnpm monorepo, facilitating shared code and depen
 - **Hashing:** bcryptjs
 - **JWT:** jsonwebtoken
 - **UI Icons:** lucide-react
-- **HTTP Client:** `authFetch` (custom wrapper)
 - **CORS Middleware:** `cors`

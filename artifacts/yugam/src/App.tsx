@@ -79,7 +79,12 @@ function ModuleView() {
     case "Flex:Purchase Invoices":
     case "Flex:Purchase Returns":
       return <FlexDashboard />;
-    case "Forge":
+    case "Forge:Production Dashboard":
+    case "Forge:Bill of Materials":
+    case "Forge:Workstations & Routing":
+    case "Forge:Work Orders":
+    case "Forge:Quality Control":
+    case "Forge:Downtime Logs":
       return <ForgeDashboard />;
     case "Fleet":
       return <FleetDashboard />;

@@ -36,3 +36,4 @@ export * from "./contracts";
 export * from "./reports";
 export * from "./visitors";
 export * from "./files";
+export * from "./forge";
