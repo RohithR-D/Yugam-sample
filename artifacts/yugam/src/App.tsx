@@ -94,7 +94,11 @@ function ModuleView() {
     case "Flow:Budgets & Costing":
     case "Flow:Document Center":
       return <FlowDashboard />;
-    case "Sprint & Solve":
+    case "Sprint & Solve:My Workspace":
+    case "Sprint & Solve:Task Boards":
+    case "Sprint & Solve:Backlog & Planning":
+    case "Sprint & Solve:Issue Desk (Tickets)":
+    case "Sprint & Solve:Timesheets":
       return <SprintSolveDashboard />;
     case "Ledger":
       return <LedgerDashboard />;

@@ -34,6 +34,7 @@ import {
   Warehouse,
   ArrowLeftRight,
   Store,
+  Clock,
 } from "lucide-react";
 
 interface Module {
@@ -139,7 +140,16 @@ const categories: Category[] = [
           { label: "Flow:Document Center", icon: HardDrive },
         ],
       },
-      { label: "Sprint & Solve", subtitle: "Tasks & Tickets", icon: ListChecks },
+      {
+        label: "Sprint & Solve", subtitle: "Tasks & Tickets", icon: ListChecks,
+        children: [
+          { label: "Sprint & Solve:My Workspace", icon: LayoutDashboard },
+          { label: "Sprint & Solve:Task Boards", icon: ListChecks },
+          { label: "Sprint & Solve:Backlog & Planning", icon: ClipboardList },
+          { label: "Sprint & Solve:Issue Desk (Tickets)", icon: FileCheck },
+          { label: "Sprint & Solve:Timesheets", icon: Clock },
+        ],
+      },
       { label: "Ledger", subtitle: "Accounts", icon: BookOpen },
       { label: "Trail", subtitle: "Expenses", icon: CreditCard },
     ],
@@ -165,7 +175,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({
