@@ -150,7 +150,17 @@ const categories: Category[] = [
           { label: "Sprint & Solve:Timesheets", icon: Clock },
         ],
       },
-      { label: "Ledger", subtitle: "Accounts", icon: BookOpen },
+      {
+        label: "Ledger", subtitle: "Accounts", icon: BookOpen,
+        children: [
+          { label: "Ledger:Finance Dashboard", icon: LayoutDashboard },
+          { label: "Ledger:Chart of Accounts", icon: BookOpen },
+          { label: "Ledger:Accounts Payable (AP)", icon: CreditCard },
+          { label: "Ledger:Accounts Receivable (AR)", icon: Receipt },
+          { label: "Ledger:Journal Entries", icon: FileText },
+          { label: "Ledger:Financial Statements", icon: BarChart3 },
+        ],
+      },
       { label: "Trail", subtitle: "Expenses", icon: CreditCard },
     ],
   },
@@ -175,7 +185,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({

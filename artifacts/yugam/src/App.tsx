@@ -100,7 +100,12 @@ function ModuleView() {
     case "Sprint & Solve:Issue Desk (Tickets)":
     case "Sprint & Solve:Timesheets":
       return <SprintSolveDashboard />;
-    case "Ledger":
+    case "Ledger:Finance Dashboard":
+    case "Ledger:Chart of Accounts":
+    case "Ledger:Accounts Payable (AP)":
+    case "Ledger:Accounts Receivable (AR)":
+    case "Ledger:Journal Entries":
+    case "Ledger:Financial Statements":
       return <LedgerDashboard />;
     case "Trail":
       return <TrailDashboard />;

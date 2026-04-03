@@ -1,0 +1,38 @@
+We are building the 'Ledger' (Accounts & Finance) module for our ERP. This must act as a strict double-entry accounting system. Use a highly professional, data-dense, financial UI. Do not hallucinate any other modules.
+
+1. Navigation (Sidebar Structure):
+Create a new top-level parent menu called 'Ledger'. It must contain EXACTLY these 6 sub-modules in this exact order:
+
+Finance Dashboard
+
+Chart of Accounts
+
+Accounts Payable (AP)
+
+Accounts Receivable (AR)
+
+Journal Entries
+
+Financial Statements
+
+2. Core Database Logic:
+
+Chart_of_Accounts: Fields for Account_Code, Account_Name, Type (Asset, Liability, Equity, Revenue, Expense), and Current_Balance.
+
+Journal_Entries: The master ledger. Must have Entry_ID, Date, Description, and linked line items mapping to the COA with strict Debit and Credit columns (which must logically balance to 0).
+
+3. Sub-module UI Requirements:
+
+Finance Dashboard: Top metric cards for Total Cash, Total Receivables, Total Payables, and Net Income. Include an 'AR/AP Aging' bar chart (showing who owes money over 30/60/90 days).
+
+Chart of Accounts: A hierarchical, collapsible list or data table grouping accounts by their Type. Include an 'Add Account' modal.
+
+Accounts Payable (AP): A ledger table for vendor bills. Include top tabs to toggle between 'Pending Bills' and 'Debit Notes' (Purchase Returns). Include a 'Record Payment' modal.
+
+Accounts Receivable (AR): A ledger table for client invoices. Include top tabs to toggle between 'Pending Invoices' and 'Credit Notes' (Sales Returns). Include a 'Receive Payment' modal.
+
+Journal Entries: A complex document-builder UI. Top section: Date, Reference, Description. Bottom section: A dynamic table to add multiple debit/credit lines. Crucial: The UI must auto-calculate total debits and credits at the bottom and disable the 'Save' button if they do not match exactly.
+
+Financial Statements: A reporting UI. A sidebar or top tabs to toggle between 'Profit & Loss', 'Balance Sheet', and 'Trial Balance'. The reports should look like standard, structured financial documents with expandable/collapsible rows. Include a 'Date Range' filter. Crucial: Next to the standard 'Download PDF', include a prominent 'Export Tally-Formatted XLS' button.
+
+Please implement this exact 6-part accounting architecture with a clean, trustworthy financial layout
