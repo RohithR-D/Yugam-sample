@@ -129,7 +129,16 @@ const categories: Category[] = [
   {
     title: "Ops & Finance",
     modules: [
-      { label: "Flow", subtitle: "Projects", icon: FolderKanban },
+      {
+        label: "Flow", subtitle: "Projects", icon: FolderKanban,
+        children: [
+          { label: "Flow:Dashboard", icon: LayoutDashboard },
+          { label: "Flow:Project Portfolio", icon: FolderKanban },
+          { label: "Flow:Milestones & Gantt", icon: BarChart3 },
+          { label: "Flow:Budgets & Costing", icon: CreditCard },
+          { label: "Flow:Document Center", icon: HardDrive },
+        ],
+      },
       { label: "Sprint & Solve", subtitle: "Tasks & Tickets", icon: ListChecks },
       { label: "Ledger", subtitle: "Accounts", icon: BookOpen },
       { label: "Trail", subtitle: "Expenses", icon: CreditCard },
@@ -156,7 +165,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({

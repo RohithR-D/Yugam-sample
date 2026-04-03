@@ -88,7 +88,11 @@ function ModuleView() {
       return <ForgeDashboard />;
     case "Fleet":
       return <FleetDashboard />;
-    case "Flow":
+    case "Flow:Dashboard":
+    case "Flow:Project Portfolio":
+    case "Flow:Milestones & Gantt":
+    case "Flow:Budgets & Costing":
+    case "Flow:Document Center":
       return <FlowDashboard />;
     case "Sprint & Solve":
       return <SprintSolveDashboard />;
