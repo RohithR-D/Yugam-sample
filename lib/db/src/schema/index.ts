@@ -38,3 +38,4 @@ export * from "./visitors";
 export * from "./files";
 export * from "./forge";
 export * from "./ledger";
+export * from "./trail";

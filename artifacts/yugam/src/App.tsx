@@ -107,7 +107,10 @@ function ModuleView() {
     case "Ledger:Journal Entries":
     case "Ledger:Financial Statements":
       return <LedgerDashboard />;
-    case "Trail":
+    case "Trail:Expense Dashboard":
+    case "Trail:My Claims":
+    case "Trail:Approval Queue":
+    case "Trail:Petty Cash Ledger":
       return <TrailDashboard />;
     case "Contracta":
       return <ContractaDashboard />;
