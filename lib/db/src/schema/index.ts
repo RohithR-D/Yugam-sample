@@ -41,3 +41,4 @@ export * from "./ledger";
 export * from "./trail";
 export * from "./contracta";
 export * from "./vision";
+export * from "./fleet";

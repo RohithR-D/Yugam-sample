@@ -38,6 +38,9 @@ import {
   DoorOpen,
   ScrollText,
   Eye,
+  Car,
+  MapPin,
+  Fuel,
 } from "lucide-react";
 
 interface Module {
@@ -127,7 +130,15 @@ const categories: Category[] = [
           { label: "Forge:Downtime Logs", icon: Calendar },
         ],
       },
-      { label: "Fleet", subtitle: "Logistics", icon: Truck },
+      {
+        label: "Fleet", subtitle: "Logistics", icon: Truck,
+        children: [
+          { label: "Fleet:Fleet Dashboard", icon: LayoutDashboard },
+          { label: "Fleet:Vehicle Directory", icon: Car },
+          { label: "Fleet:Dispatch & Trips", icon: MapPin },
+          { label: "Fleet:Fuel & Maintenance Logs", icon: Fuel },
+        ],
+      },
     ],
   },
   {
@@ -221,7 +232,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false, Contracta: false, Vision: false, Gate: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Fleet: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false, Contracta: false, Vision: false, Gate: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({

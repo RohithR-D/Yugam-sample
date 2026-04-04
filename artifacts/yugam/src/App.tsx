@@ -86,7 +86,10 @@ function ModuleView() {
     case "Forge:Quality Control":
     case "Forge:Downtime Logs":
       return <ForgeDashboard />;
-    case "Fleet":
+    case "Fleet:Fleet Dashboard":
+    case "Fleet:Vehicle Directory":
+    case "Fleet:Dispatch & Trips":
+    case "Fleet:Fuel & Maintenance Logs":
       return <FleetDashboard />;
     case "Flow:Dashboard":
     case "Flow:Project Portfolio":
