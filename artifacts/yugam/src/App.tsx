@@ -118,7 +118,10 @@ function ModuleView() {
     case "Contracta:Statutory Compliances":
     case "Contracta:Letter & Doc Builder":
       return <ContractaDashboard />;
-    case "Vision":
+    case "Vision:Executive Dashboard":
+    case "Vision:Financial Health":
+    case "Vision:Ops & Production":
+    case "Vision:Report Center":
       return <VisionDashboard />;
     case "Gate":
       return <GateDashboard />;
