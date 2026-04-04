@@ -123,7 +123,10 @@ function ModuleView() {
     case "Vision:Ops & Production":
     case "Vision:Report Center":
       return <VisionDashboard />;
-    case "Gate":
+    case "Gate:Gate Dashboard":
+    case "Gate:Access Portal":
+    case "Gate:Visitor Logs":
+    case "Gate:Security Settings & Watchlist":
       return <GateDashboard />;
     case "Drive":
       return <DriveDashboard />;

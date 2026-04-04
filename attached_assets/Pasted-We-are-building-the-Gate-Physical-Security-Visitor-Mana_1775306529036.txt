@@ -1,0 +1,38 @@
+We are building the 'Gate' (Physical Security & Visitor Management) module for our ERP. This module is used by physical security guards at the front desk to manage visitor flow, capture photos, issue thermal QR passes, and track building occupancy. The UI must be high-contrast, fast, and idiot-proof.
+
+1. Navigation (Sidebar Structure):
+Create a new top-level parent menu called 'Gate'. It must contain EXACTLY these 4 sub-modules in this exact order:
+
+Gate Dashboard
+
+Access Portal (Check-In/Out)
+
+Visitor Logs
+
+Security Settings & Watchlist
+
+2. Core Database Logic:
+
+Visitors: Fields must include Visitor_ID, Name, Phone, Photo_URL, Host_Employee (Dropdown linked to HR), Purpose (Meeting, Interview, Delivery, Maintenance), Ticket_Ref (Optional link to 'Solve' maintenance tickets), Check_In_Time, Check_Out_Time, Status (In-Premises, Checked-Out), and Classification (Standard, VIP, Blacklist).
+
+3. Sub-module UI Requirements:
+
+Gate Dashboard: A high-visibility monitoring screen.
+
+Top metric cards: 'Current Occupancy' (Live count), 'Total Visitors Today', and 'Expected VIPs'.
+
+Crucial Feature: A massive, red 'EMERGENCY ROLL CALL' button at the top that generates a printable list of everyone currently 'In-Premises' for fire safety evacuations.
+
+Access Portal (Check-In/Out): The main security guard UI. Split screen.
+
+Check-In Mode: Left side: A 'Live Camera' placeholder box with a 'Capture Photo' button. Right side: Visitor details form (Name, Phone, Host, Purpose). At the bottom, a prominent 'Generate 58mm Gate Pass' button (simulates printing a small receipt-sized pass with a QR code).
+
+Check-Out Mode: A large 'Scan QR to Exit' placeholder box that simulates instantly logging the Check_Out_Time when a pass is scanned.
+
+Visitor Logs: A comprehensive data table of historical visitors.
+
+Crucial Feature: Implement UI color-coding for the rows based on Classification (e.g., Gold background/border for 'VIP', solid Red for 'Blacklist', standard for others).
+
+Security Settings & Watchlist: A management page for Admins to add names/phone numbers to the 'Blacklist' or 'VIP list'. Also include a toggle for 'Notify Pantry/Housekeeping on VIP Check-In'.
+
+Please implement this exact architecture, paying special attention to the Access Portal UI—it must feel like a real-world, high-speed security desk software!

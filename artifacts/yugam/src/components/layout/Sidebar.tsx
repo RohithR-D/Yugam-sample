@@ -35,6 +35,9 @@ import {
   ArrowLeftRight,
   Store,
   Clock,
+  DoorOpen,
+  ScrollText,
+  Eye,
 } from "lucide-react";
 
 interface Module {
@@ -194,7 +197,15 @@ const categories: Category[] = [
           { label: "Vision:Report Center", icon: FileOutput },
         ],
       },
-      { label: "Gate", subtitle: "Security", icon: Shield },
+      {
+        label: "Gate", subtitle: "Security", icon: Shield,
+        children: [
+          { label: "Gate:Gate Dashboard", icon: LayoutDashboard },
+          { label: "Gate:Access Portal", icon: DoorOpen },
+          { label: "Gate:Visitor Logs", icon: ScrollText },
+          { label: "Gate:Security Settings & Watchlist", icon: Eye },
+        ],
+      },
       { label: "Drive", subtitle: "Files", icon: HardDrive },
       { label: "Settings", subtitle: "System", icon: Settings },
     ],
@@ -210,7 +221,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false, Contracta: false, Vision: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false, Contracta: false, Vision: false, Gate: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({

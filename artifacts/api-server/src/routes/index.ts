@@ -39,6 +39,7 @@ import expensesRouter from "./expenses";
 import contractsRouter from "./contracts";
 import reportsRouter from "./reports";
 import visitorsRouter from "./visitors";
+import gateRouter from "./gate";
 import filesRouter from "./files";
 import dashboardSummaryRouter from "./dashboardSummary";
 
@@ -85,6 +86,7 @@ router.use(expensesRouter);
 router.use(contractsRouter);
 router.use(reportsRouter);
 router.use(visitorsRouter);
+router.use(gateRouter);
 router.use(filesRouter);
 router.use(dashboardSummaryRouter);
 
