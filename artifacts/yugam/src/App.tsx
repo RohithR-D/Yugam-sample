@@ -112,7 +112,11 @@ function ModuleView() {
     case "Trail:Approval Queue":
     case "Trail:Petty Cash Ledger":
       return <TrailDashboard />;
-    case "Contracta":
+    case "Contracta:Compliance Dashboard":
+    case "Contracta:Client Agreements":
+    case "Contracta:Vendor Contracts":
+    case "Contracta:Statutory Compliances":
+    case "Contracta:Letter & Doc Builder":
       return <ContractaDashboard />;
     case "Vision":
       return <VisionDashboard />;

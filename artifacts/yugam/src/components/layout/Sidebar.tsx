@@ -175,7 +175,16 @@ const categories: Category[] = [
   {
     title: "Command & Control",
     modules: [
-      { label: "Contracta", subtitle: "Legal Docs", icon: FileSignature },
+      {
+        label: "Contracta", subtitle: "Legal Docs", icon: FileSignature,
+        children: [
+          { label: "Contracta:Compliance Dashboard", icon: LayoutDashboard },
+          { label: "Contracta:Client Agreements", icon: FileText },
+          { label: "Contracta:Vendor Contracts", icon: FileCheck },
+          { label: "Contracta:Statutory Compliances", icon: Shield },
+          { label: "Contracta:Letter & Doc Builder", icon: FileSignature },
+        ],
+      },
       { label: "Vision", subtitle: "Reports", icon: BarChart3 },
       { label: "Gate", subtitle: "Security", icon: Shield },
       { label: "Drive", subtitle: "Files", icon: HardDrive },
@@ -193,7 +202,7 @@ export default function Sidebar() {
     });
     return initial;
   });
-  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false });
+  const [expandedModules, setExpandedModules] = useState<Record<string, boolean>>({ Sales: false, Sync: false, Vault: false, Flex: false, Forge: false, Flow: false, "Sprint & Solve": false, Ledger: false, Trail: false, Contracta: false });
 
   function toggleCategory(title: string) {
     setExpandedCategories((prev) => ({
