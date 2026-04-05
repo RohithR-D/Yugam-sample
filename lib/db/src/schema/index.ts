@@ -42,3 +42,4 @@ export * from "./trail";
 export * from "./contracta";
 export * from "./vision";
 export * from "./fleet";
+export * from "./sales";

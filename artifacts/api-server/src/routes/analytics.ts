@@ -5,7 +5,7 @@ import {
   tasksTable,
   projectsTable,
   employeesTable,
-  invoicesTable,
+  salesInvoicesTable,
   expensesTable,
 } from "@workspace/db/schema";
 import { sql, eq } from "drizzle-orm";
@@ -86,11 +86,11 @@ analyticsRouter.get("/analytics/operational-stats", async (_req: Request, res: R
 
     const invoicesByStatus = await db
       .select({
-        status: invoicesTable.status,
+        status: salesInvoicesTable.status,
         count: sql<number>`count(*)::int`,
       })
-      .from(invoicesTable)
-      .groupBy(invoicesTable.status);
+      .from(salesInvoicesTable)
+      .groupBy(salesInvoicesTable.status);
 
     const expensesByCategory = await db
       .select({

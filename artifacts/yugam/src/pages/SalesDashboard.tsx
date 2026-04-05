@@ -17,10 +17,21 @@ import {
   CircleDollarSign,
   FileCheck,
   FileClock,
+  Truck,
+  RotateCcw,
 } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
 
 type SalesSubModule = "Overview" | "Quotation" | "Proforma Invoice" | "Sales Order" | "Invoices" | "Delivery Challan" | "Sales Return";
+
+const ENDPOINT_MAP: Record<string, string> = {
+  "Quotation": "/api/sales/quotations",
+  "Proforma Invoice": "/api/sales/proforma-invoices",
+  "Sales Order": "/api/sales/orders",
+  "Invoice": "/api/sales/invoices",
+  "Delivery Challan": "/api/sales/challans",
+  "Sales Return": "/api/sales/returns",
+};
 
 const DOC_TYPE_MAP: Record<SalesSubModule, string> = {
   "Overview": "",
@@ -32,13 +43,31 @@ const DOC_TYPE_MAP: Record<SalesSubModule, string> = {
   "Sales Return": "Sales Return",
 };
 
-const DOC_PREFIX_MAP: Record<string, string> = {
-  "Quotation": "QTN",
-  "Proforma Invoice": "PI",
-  "Sales Order": "SO",
-  "Invoice": "INV",
-  "Delivery Challan": "DC",
-  "Sales Return": "SR",
+const STATUS_OPTIONS: Record<string, string[]> = {
+  "Quotation": ["Draft", "Sent", "Revised", "Accepted", "Rejected", "Expired", "Cancelled"],
+  "Proforma Invoice": ["Draft", "Sent", "Accepted", "Expired", "Cancelled"],
+  "Sales Order": ["Draft", "Confirmed", "In Progress", "Completed", "Cancelled", "On Hold"],
+  "Invoice": ["Draft", "Approved", "Sent", "Overdue", "Paid", "Cancelled", "Written Off"],
+  "Delivery Challan": ["Draft", "Dispatched", "In Transit", "Delivered", "Returned", "Cancelled"],
+  "Sales Return": ["Draft", "Confirmed", "Goods Received", "Credit Issued", "Cancelled"],
+};
+
+const DATE_FIELD_MAP: Record<string, string> = {
+  "Quotation": "quotationDate",
+  "Proforma Invoice": "proformaDate",
+  "Sales Order": "orderDate",
+  "Invoice": "invoiceDate",
+  "Delivery Challan": "challanDate",
+  "Sales Return": "returnDate",
+};
+
+const NUMBER_FIELD_MAP: Record<string, string> = {
+  "Quotation": "quotationNumber",
+  "Proforma Invoice": "proformaNumber",
+  "Sales Order": "soNumber",
+  "Invoice": "invoiceNumber",
+  "Delivery Challan": "challanNumber",
+  "Sales Return": "returnNumber",
 };
 
 interface SalesDoc {
@@ -47,34 +76,38 @@ interface SalesDoc {
   clientName: string;
   documentType: string;
   documentNumber: string;
-  issueDate: string | null;
-  dueDate: string | null;
-  subtotal: string;
-  sgstTotal: string;
-  cgstTotal: string;
   grandTotal: string;
-  notes: string;
-  terms: string;
   status: string;
   createdAt: string | null;
-  items?: DocItem[];
+  balanceDue?: string;
+  paymentStatus?: string;
+  [key: string]: any;
 }
 
 interface DocItem {
   id?: number;
-  documentId?: number;
   description: string;
   hsnSac: string;
-  qty: string;
+  quantity: string;
+  uom: string;
   rate: string;
-  cgstPercentage: string;
-  sgstPercentage: string;
+  discountPercent: string;
+  cgstPercent: string;
+  cgstAmount: string;
+  sgstPercent: string;
+  sgstAmount: string;
+  igstPercent: string;
+  igstAmount: string;
+  taxableAmount: string;
   lineTotal: string;
+  itemType: string;
 }
 
 interface Client {
   id: number;
   companyName: string;
+  stateCode?: string;
+  gstin?: string;
 }
 
 function formatCurrency(val: number) {
@@ -90,8 +123,23 @@ function formatDate(dateStr: string | null) {
 function StatusPill({ status }: { status: string }) {
   const styles: Record<string, string> = {
     Paid: "bg-green-50 text-green-600 border-green-200",
+    Approved: "bg-green-50 text-green-600 border-green-200",
+    Accepted: "bg-green-50 text-green-600 border-green-200",
+    Completed: "bg-green-50 text-green-600 border-green-200",
+    Delivered: "bg-green-50 text-green-600 border-green-200",
+    "Credit Issued": "bg-green-50 text-green-600 border-green-200",
+    Confirmed: "bg-blue-50 text-blue-600 border-blue-200",
+    "In Progress": "bg-blue-50 text-blue-600 border-blue-200",
+    Sent: "bg-blue-50 text-blue-600 border-blue-200",
+    Dispatched: "bg-blue-50 text-blue-600 border-blue-200",
+    "In Transit": "bg-indigo-50 text-indigo-600 border-indigo-200",
     Unpaid: "bg-amber-50 text-amber-600 border-amber-200",
-    Drafting: "bg-gray-50 text-gray-500 border-gray-200",
+    Partial: "bg-amber-50 text-amber-600 border-amber-200",
+    Overdue: "bg-red-50 text-red-600 border-red-200",
+    Rejected: "bg-red-50 text-red-600 border-red-200",
+    Cancelled: "bg-red-50 text-red-600 border-red-200",
+    Draft: "bg-gray-50 text-gray-500 border-gray-200",
+    Expired: "bg-gray-50 text-gray-400 border-gray-200",
   };
   return (
     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${styles[status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>
@@ -105,40 +153,71 @@ const COMPANY_INFO = {
   address: "3rd Floor, Tech Park, Andheri East",
   city: "Mumbai, Maharashtra — 400069",
   gstin: "27AABCY1234F1ZQ",
+  stateCode: "27",
 };
 
 function emptyDocItem(): DocItem {
-  return { description: "", hsnSac: "", qty: "1", rate: "0", cgstPercentage: "9", sgstPercentage: "9", lineTotal: "0" };
+  return { description: "", hsnSac: "", quantity: "1", uom: "Nos", rate: "0", discountPercent: "0", cgstPercent: "9", cgstAmount: "0", sgstPercent: "9", sgstAmount: "0", igstPercent: "0", igstAmount: "0", taxableAmount: "0", lineTotal: "0", itemType: "Product" };
 }
 
-function calcDocItem(item: DocItem): DocItem {
-  const qty = parseFloat(item.qty) || 0;
+function calcDocItem(item: DocItem, gstType: "cgst_sgst" | "igst" = "cgst_sgst"): DocItem {
+  const qty = parseFloat(item.quantity) || 0;
   const rate = parseFloat(item.rate) || 0;
   const base = qty * rate;
-  const cgst = base * (parseFloat(item.cgstPercentage) || 0) / 100;
-  const sgst = base * (parseFloat(item.sgstPercentage) || 0) / 100;
-  return { ...item, lineTotal: (base + cgst + sgst).toFixed(2) };
+  const discPct = parseFloat(item.discountPercent) || 0;
+  const discAmt = base * discPct / 100;
+  const taxable = base - discAmt;
+
+  let cgstPct = 0, sgstPct = 0, igstPct = 0;
+  if (gstType === "cgst_sgst") {
+    cgstPct = parseFloat(item.cgstPercent) || 0;
+    sgstPct = parseFloat(item.sgstPercent) || 0;
+    igstPct = 0;
+  } else {
+    cgstPct = 0;
+    sgstPct = 0;
+    igstPct = (parseFloat(item.cgstPercent) || 0) + (parseFloat(item.sgstPercent) || 0) || parseFloat(item.igstPercent) || 18;
+  }
+
+  const cgstAmt = taxable * cgstPct / 100;
+  const sgstAmt = taxable * sgstPct / 100;
+  const igstAmt = taxable * igstPct / 100;
+  const lineTotal = taxable + cgstAmt + sgstAmt + igstAmt;
+
+  return {
+    ...item,
+    taxableAmount: taxable.toFixed(2),
+    cgstPercent: cgstPct.toFixed(2),
+    cgstAmount: cgstAmt.toFixed(2),
+    sgstPercent: sgstPct.toFixed(2),
+    sgstAmount: sgstAmt.toFixed(2),
+    igstPercent: igstPct.toFixed(2),
+    igstAmount: igstAmt.toFixed(2),
+    lineTotal: lineTotal.toFixed(2),
+  };
 }
 
 export default function SalesDashboard() {
   const { activeModule, setActiveModule } = useModule();
   const subModule: SalesSubModule = (activeModule.replace("Sales:", "") || "Overview") as SalesSubModule;
 
-  const [docs, setDocs] = useState<SalesDoc[]>([]);
+  const [allDocs, setAllDocs] = useState<SalesDoc[]>([]);
+  const [typeDocs, setTypeDocs] = useState<any[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [builderOpen, setBuilderOpen] = useState(false);
-  const [editingDoc, setEditingDoc] = useState<SalesDoc | null>(null);
+  const [editingDoc, setEditingDoc] = useState<any | null>(null);
   const [builderDocType, setBuilderDocType] = useState("Quotation");
 
   const fetchAll = useCallback(async () => {
+    setLoading(true);
     try {
       const [docsRes, cliRes] = await Promise.all([
-        authFetch("/api/sales-documents"),
+        authFetch("/api/sales/all-documents"),
         authFetch("/api/clients"),
       ]);
-      if (docsRes.ok) setDocs(await docsRes.json());
+      if (docsRes.ok) setAllDocs(await docsRes.json());
       if (cliRes.ok) {
         const cliData = await cliRes.json();
         setClients(Array.isArray(cliData) ? cliData : cliData.data || []);
@@ -146,23 +225,44 @@ export default function SalesDashboard() {
     } catch {} finally { setLoading(false); }
   }, []);
 
+  const fetchTypeDocs = useCallback(async (docType: string) => {
+    const endpoint = ENDPOINT_MAP[docType];
+    if (!endpoint) return;
+    try {
+      const res = await authFetch(endpoint);
+      if (res.ok) setTypeDocs(await res.json());
+    } catch {}
+  }, []);
+
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  useEffect(() => {
+    const docType = DOC_TYPE_MAP[subModule];
+    if (docType) fetchTypeDocs(docType);
+  }, [subModule, fetchTypeDocs]);
 
   const filteredDocs = useMemo(() => {
     const targetType = DOC_TYPE_MAP[subModule];
     if (!targetType) return [];
-    let items = docs.filter((d) => d.documentType === targetType);
+
+    const numberField = NUMBER_FIELD_MAP[targetType] || "documentNumber";
+    let items = typeDocs.map((d: any) => ({
+      ...d,
+      documentNumber: d[numberField] || d.documentNumber || "",
+      documentType: targetType,
+    }));
+
     if (search.trim()) {
       const q = search.toLowerCase();
-      items = items.filter((d) =>
-        d.clientName.toLowerCase().includes(q) ||
-        d.documentNumber.toLowerCase().includes(q)
+      items = items.filter((d: any) =>
+        (d.clientName || "").toLowerCase().includes(q) ||
+        (d.documentNumber || "").toLowerCase().includes(q)
       );
     }
     return items;
-  }, [docs, subModule, search]);
+  }, [typeDocs, subModule, search]);
 
-  const openBuilder = (docType: string, doc?: SalesDoc) => {
+  const openBuilder = (docType: string, doc?: any) => {
     setBuilderDocType(docType);
     setEditingDoc(doc || null);
     setBuilderOpen(true);
@@ -170,14 +270,20 @@ export default function SalesDashboard() {
 
   const handleBuilderSave = async () => {
     await fetchAll();
+    const docType = DOC_TYPE_MAP[subModule];
+    if (docType) await fetchTypeDocs(docType);
     setBuilderOpen(false);
     setEditingDoc(null);
   };
 
   const handleDelete = async (id: number) => {
     if (!confirm("Delete this document?")) return;
-    await authFetch(`/api/sales-documents/${id}`, { method: "DELETE" });
+    const docType = DOC_TYPE_MAP[subModule];
+    const endpoint = ENDPOINT_MAP[docType];
+    if (!endpoint) return;
+    await authFetch(`${endpoint}/${id}`, { method: "DELETE" });
     await fetchAll();
+    if (docType) await fetchTypeDocs(docType);
   };
 
   if (builderOpen) {
@@ -193,10 +299,12 @@ export default function SalesDashboard() {
   }
 
   if (subModule === "Overview") {
-    return <OverviewDashboard docs={docs} loading={loading} setActiveModule={setActiveModule} />;
+    return <OverviewDashboard allDocs={allDocs} loading={loading} setActiveModule={setActiveModule} />;
   }
 
-  const canCreate = ["Quotation", "Proforma Invoice", "Sales Order", "Invoices", "Delivery Challan", "Sales Return"].includes(subModule);
+  const docType = DOC_TYPE_MAP[subModule];
+  const canCreate = !!ENDPOINT_MAP[docType];
+  const showBalanceDue = docType === "Invoice";
 
   return (
     <div className="space-y-5">
@@ -207,10 +315,10 @@ export default function SalesDashboard() {
         </div>
         {canCreate && (
           <button
-            onClick={() => openBuilder(DOC_TYPE_MAP[subModule], undefined)}
+            onClick={() => openBuilder(docType, undefined)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"
           >
-            <Plus className="w-4 h-4" /> Create {subModule}
+            <Plus className="w-4 h-4" /> Create {subModule === "Invoices" ? "Invoice" : subModule}
           </button>
         )}
       </div>
@@ -243,33 +351,39 @@ export default function SalesDashboard() {
                 <th className="px-4 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Customer</th>
                 <th className="px-4 py-3 text-center text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Balance Due</th>
+                {showBalanceDue && <th className="px-4 py-3 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Balance Due</th>}
                 <th className="px-4 py-3 w-[80px]"></th>
               </tr>
             </thead>
             <tbody>
-              {filteredDocs.map((doc) => (
-                <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                  <td className="px-5 py-3.5 text-xs text-gray-500">{formatDate(doc.issueDate || doc.createdAt)}</td>
-                  <td className="px-4 py-3.5 font-mono text-xs text-gray-700 font-medium">{doc.documentNumber}</td>
-                  <td className="px-4 py-3.5 text-sm text-gray-800 font-medium">{doc.clientName}</td>
-                  <td className="px-4 py-3.5 text-center"><StatusPill status={doc.status} /></td>
-                  <td className="px-4 py-3.5 text-right font-bold text-gray-800">{formatCurrency(parseFloat(doc.grandTotal) || 0)}</td>
-                  <td className="px-4 py-3.5 text-right font-semibold text-amber-600">
-                    {doc.status === "Paid" ? formatCurrency(0) : formatCurrency(parseFloat(doc.grandTotal) || 0)}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => openBuilder(doc.documentType, doc)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
-                        <Eye className="w-3.5 h-3.5" />
-                      </button>
-                      <button onClick={() => handleDelete(doc.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredDocs.map((doc: any) => {
+                const dateField = DATE_FIELD_MAP[docType];
+                const displayDate = doc[dateField] || doc.createdAt;
+                return (
+                  <tr key={doc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+                    <td className="px-5 py-3.5 text-xs text-gray-500">{formatDate(displayDate)}</td>
+                    <td className="px-4 py-3.5 font-mono text-xs text-gray-700 font-medium">{doc.documentNumber}</td>
+                    <td className="px-4 py-3.5 text-sm text-gray-800 font-medium">{doc.clientName}</td>
+                    <td className="px-4 py-3.5 text-center"><StatusPill status={doc.paymentStatus || doc.status} /></td>
+                    <td className="px-4 py-3.5 text-right font-bold text-gray-800">{formatCurrency(parseFloat(doc.grandTotal || doc.approximateValue || "0"))}</td>
+                    {showBalanceDue && (
+                      <td className="px-4 py-3.5 text-right font-semibold text-amber-600">
+                        {formatCurrency(parseFloat(doc.balanceDue || "0"))}
+                      </td>
+                    )}
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => openBuilder(docType, doc)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors">
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                        <button onClick={() => handleDelete(doc.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -278,37 +392,44 @@ export default function SalesDashboard() {
   );
 }
 
-function OverviewDashboard({ docs, loading, setActiveModule }: {
-  docs: SalesDoc[];
+function OverviewDashboard({ allDocs, loading, setActiveModule }: {
+  allDocs: SalesDoc[];
   loading: boolean;
   setActiveModule: (m: string) => void;
 }) {
-  const totalSales = docs.reduce((s, d) => s + (parseFloat(d.grandTotal) || 0), 0);
-  const totalPaid = docs.filter((d) => d.status === "Paid").reduce((s, d) => s + (parseFloat(d.grandTotal) || 0), 0);
-  const totalUnpaid = docs.filter((d) => d.status === "Unpaid").reduce((s, d) => s + (parseFloat(d.grandTotal) || 0), 0);
-  const draftingCount = docs.filter((d) => d.status === "Drafting").length;
+  const invoices = allDocs.filter((d) => d.documentType === "Invoice");
+  const totalInvoiced = invoices.reduce((s, d) => s + (parseFloat(d.grandTotal) || 0), 0);
+  const totalPaid = invoices.filter((d) => d.paymentStatus === "Paid" || d.status === "Paid").reduce((s, d) => s + (parseFloat(d.grandTotal) || 0), 0);
+  const totalUnpaid = invoices.filter((d) => ["Unpaid", "Partial", "Overdue"].includes(d.paymentStatus || d.status)).reduce((s, d) => s + (parseFloat(d.balanceDue || d.grandTotal) || 0), 0);
+  const draftCount = allDocs.filter((d) => d.status === "Draft").length;
 
   const metrics = [
-    { label: "Total Sales", value: formatCurrency(totalSales), icon: TrendingUp, color: "text-blue-600", ring: "border-blue-200", bg: "bg-blue-50" },
+    { label: "Total Invoiced", value: formatCurrency(totalInvoiced), icon: TrendingUp, color: "text-blue-600", ring: "border-blue-200", bg: "bg-blue-50" },
     { label: "Total Paid", value: formatCurrency(totalPaid), icon: CircleDollarSign, color: "text-green-600", ring: "border-green-200", bg: "bg-green-50" },
     { label: "Total Unpaid", value: formatCurrency(totalUnpaid), icon: IndianRupee, color: "text-amber-600", ring: "border-amber-200", bg: "bg-amber-50" },
-    { label: "Drafting Invoice", value: draftingCount.toString(), icon: FileClock, color: "text-gray-600", ring: "border-gray-200", bg: "bg-gray-50" },
+    { label: "Draft Documents", value: draftCount.toString(), icon: FileClock, color: "text-gray-600", ring: "border-gray-200", bg: "bg-gray-50" },
   ];
 
-  const paidCount = docs.filter((d) => d.status === "Paid").length;
-  const unpaidCount = docs.filter((d) => d.status === "Unpaid").length;
-  const draftCount = docs.filter((d) => d.status === "Drafting").length;
+  const paidCount = invoices.filter((d) => d.paymentStatus === "Paid" || d.status === "Paid").length;
+  const unpaidCount = invoices.filter((d) => ["Unpaid", "Partial", "Overdue"].includes(d.paymentStatus || d.status)).length;
+  const draftInvCount = invoices.filter((d) => d.status === "Draft").length;
 
   const donutData = [
     { name: "Paid", value: paidCount, color: "#22c55e" },
     { name: "Unpaid", value: unpaidCount, color: "#f59e0b" },
-    { name: "Drafting", value: draftCount, color: "#9ca3af" },
+    { name: "Draft", value: draftInvCount, color: "#9ca3af" },
   ].filter((d) => d.value > 0);
 
-  const recentInvoices = docs
-    .filter((d) => d.documentType === "Invoice")
-    .sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime())
-    .slice(0, 8);
+  const recentInvoices = invoices.slice(0, 8);
+
+  const docTypeCounts = [
+    { label: "Quotations", count: allDocs.filter((d) => d.documentType === "Quotation").length, module: "Sales:Quotation", icon: FileText, color: "text-violet-600", bg: "bg-violet-50" },
+    { label: "Proforma Invoices", count: allDocs.filter((d) => d.documentType === "Proforma Invoice").length, module: "Sales:Proforma Invoice", icon: FileCheck, color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Sales Orders", count: allDocs.filter((d) => d.documentType === "Sales Order").length, module: "Sales:Sales Order", icon: FileClock, color: "text-indigo-600", bg: "bg-indigo-50" },
+    { label: "Delivery Challans", count: allDocs.filter((d) => d.documentType === "Delivery Challan").length, module: "Sales:Delivery Challan", icon: Truck, color: "text-teal-600", bg: "bg-teal-50" },
+    { label: "Invoices", count: invoices.length, module: "Sales:Invoices", icon: IndianRupee, color: "text-green-600", bg: "bg-green-50" },
+    { label: "Sales Returns", count: allDocs.filter((d) => d.documentType === "Sales Return").length, module: "Sales:Sales Return", icon: RotateCcw, color: "text-red-600", bg: "bg-red-50" },
+  ];
 
   if (loading) return <div className="text-center py-16 text-gray-400">Loading sales data...</div>;
 
@@ -338,42 +459,42 @@ function OverviewDashboard({ docs, loading, setActiveModule }: {
         })}
       </div>
 
+      <div className="grid grid-cols-3 gap-3">
+        {docTypeCounts.map((dt) => {
+          const Icon = dt.icon;
+          return (
+            <button key={dt.label} onClick={() => setActiveModule(dt.module)} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm hover:shadow-md transition-all text-left group">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg ${dt.bg} flex items-center justify-center shrink-0`}>
+                  <Icon className={`w-4 h-4 ${dt.color}`} />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-400 font-medium">{dt.label}</p>
+                  <p className="text-lg font-bold text-gray-800">{dt.count}</p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid grid-cols-2 gap-5">
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-bold text-gray-800">Total Invoice Status</h2>
-            <p className="text-xs text-gray-400 mt-0.5">Distribution of Paid, Unpaid & Drafting</p>
+            <h2 className="text-sm font-bold text-gray-800">Invoice Payment Status</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Distribution of Paid, Unpaid & Draft</p>
           </div>
           <div className="p-5 h-[280px]">
             {donutData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-gray-400 text-sm">No data yet</div>
+              <div className="flex items-center justify-center h-full text-gray-400 text-sm">No invoice data yet</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={donutData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={4}
-                    dataKey="value"
-                    strokeWidth={0}
-                  >
-                    {donutData.map((entry, index) => (
-                      <Cell key={index} fill={entry.color} />
-                    ))}
+                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={4} dataKey="value" strokeWidth={0}>
+                    {donutData.map((entry, index) => (<Cell key={index} fill={entry.color} />))}
                   </Pie>
-                  <Tooltip
-                    formatter={(value: number, name: string) => [`${value} document${value !== 1 ? "s" : ""}`, name]}
-                    contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px" }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    iconType="circle"
-                    iconSize={8}
-                    formatter={(value: string) => <span className="text-xs text-gray-600">{value}</span>}
-                  />
+                  <Tooltip formatter={(value: number, name: string) => [`${value} invoice${value !== 1 ? "s" : ""}`, name]} contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb", fontSize: "12px" }} />
+                  <Legend verticalAlign="bottom" iconType="circle" iconSize={8} formatter={(value: string) => <span className="text-xs text-gray-600">{value}</span>} />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -386,12 +507,7 @@ function OverviewDashboard({ docs, loading, setActiveModule }: {
               <h2 className="text-sm font-bold text-gray-800">Recent Invoices</h2>
               <p className="text-xs text-gray-400 mt-0.5">Latest invoice entries</p>
             </div>
-            <button
-              onClick={() => setActiveModule("Sales:Invoices")}
-              className="text-xs font-semibold text-[#E31E24] hover:underline"
-            >
-              View All
-            </button>
+            <button onClick={() => setActiveModule("Sales:Invoices")} className="text-xs font-semibold text-[#E31E24] hover:underline">View All</button>
           </div>
           <div className="divide-y divide-gray-50">
             {recentInvoices.length === 0 ? (
@@ -400,9 +516,7 @@ function OverviewDashboard({ docs, loading, setActiveModule }: {
               recentInvoices.map((inv) => (
                 <div key={inv.id} className="px-5 py-3 flex items-center justify-between hover:bg-gray-50/50 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="p-2 bg-gray-50 rounded-lg shrink-0">
-                      <FileCheck className="w-4 h-4 text-gray-400" />
-                    </div>
+                    <div className="p-2 bg-gray-50 rounded-lg shrink-0"><FileCheck className="w-4 h-4 text-gray-400" /></div>
                     <div className="min-w-0">
                       <p className="text-xs font-mono text-gray-500 truncate">{inv.documentNumber}</p>
                       <p className="text-sm font-medium text-gray-800 truncate">{inv.clientName}</p>
@@ -410,7 +524,7 @@ function OverviewDashboard({ docs, loading, setActiveModule }: {
                   </div>
                   <div className="text-right shrink-0 ml-3">
                     <p className="text-sm font-bold text-gray-800">{formatCurrency(parseFloat(inv.grandTotal) || 0)}</p>
-                    <StatusPill status={inv.status} />
+                    <StatusPill status={inv.paymentStatus || inv.status} />
                   </div>
                 </div>
               ))
@@ -424,7 +538,7 @@ function OverviewDashboard({ docs, loading, setActiveModule }: {
 
 function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
   documentType: string;
-  doc: SalesDoc | null;
+  doc: any | null;
   clients: Client[];
   onSave: () => void;
   onCancel: () => void;
@@ -432,94 +546,174 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
   const isEdit = !!doc;
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [gstType, setGstType] = useState<"cgst_sgst" | "igst">("cgst_sgst");
 
-  const prefix = DOC_PREFIX_MAP[documentType] || "DOC";
-  const defaultDocNum = `${prefix}-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+  const numberField = NUMBER_FIELD_MAP[documentType] || "documentNumber";
+  const dateField = DATE_FIELD_MAP[documentType] || "createdAt";
+  const statusOptions = STATUS_OPTIONS[documentType] || ["Draft"];
+  const endpoint = ENDPOINT_MAP[documentType] || "/api/sales/quotations";
+  const isChallan = documentType === "Delivery Challan";
 
   const [form, setForm] = useState({
     clientId: doc?.clientId?.toString() || "",
     clientName: doc?.clientName || "",
-    documentNumber: doc?.documentNumber || defaultDocNum,
-    issueDate: doc?.issueDate ? new Date(doc.issueDate).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-    dueDate: doc?.dueDate ? new Date(doc.dueDate).toISOString().split("T")[0] : "",
+    docDate: doc?.[dateField] ? new Date(doc[dateField]).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+    dueDate: doc?.dueDate ? new Date(doc.dueDate).toISOString().split("T")[0] : doc?.validUntil ? new Date(doc.validUntil).toISOString().split("T")[0] : "",
     notes: doc?.notes || "",
-    terms: doc?.terms || "Payment due within 30 days of issue date.\nAll amounts are in Indian Rupees (₹).",
-    status: doc?.status || "Drafting",
+    termsAndConditions: doc?.termsAndConditions || "Payment due within 30 days of issue date.\nAll amounts are in Indian Rupees (₹).",
+    status: doc?.status || "Draft",
+    placeOfSupply: doc?.placeOfSupply || COMPANY_INFO.stateCode,
   });
 
   const [lineItems, setLineItems] = useState<DocItem[]>(
     doc?.items && doc.items.length > 0
-      ? doc.items.map((i) => calcDocItem(i))
+      ? doc.items.map((i: any) => calcDocItem({
+          description: i.description || "",
+          hsnSac: i.hsnSac || i.hsn_sac || "",
+          quantity: i.quantity || i.qty || "1",
+          uom: i.uom || "Nos",
+          rate: i.rate || "0",
+          discountPercent: i.discountPercent || i.discount_percent || "0",
+          cgstPercent: i.cgstPercent || i.cgst_percent || i.cgstPercentage || "9",
+          cgstAmount: "0", sgstPercent: i.sgstPercent || i.sgst_percent || i.sgstPercentage || "9",
+          sgstAmount: "0", igstPercent: i.igstPercent || i.igst_percent || "0", igstAmount: "0",
+          taxableAmount: "0", lineTotal: "0", itemType: i.itemType || "Product",
+        }, gstType))
       : [emptyDocItem()]
   );
 
   useEffect(() => {
     if (isEdit && doc?.id) {
-      authFetch(`/api/sales-documents/${doc.id}`).then(async (res) => {
+      authFetch(`${endpoint}/${doc.id}`).then(async (res) => {
         if (res.ok) {
           const data = await res.json();
           if (data.items && data.items.length > 0) {
-            setLineItems(data.items.map((i: DocItem) => calcDocItem(i)));
+            const detectedGst = data.placeOfSupply && data.placeOfSupply !== COMPANY_INFO.stateCode ? "igst" : "cgst_sgst";
+            setGstType(detectedGst);
+            setLineItems(data.items.map((i: any) => calcDocItem({
+              description: i.description || "",
+              hsnSac: i.hsnSac || "",
+              quantity: i.quantity || i.dispatchedQty || "1",
+              uom: i.uom || "Nos",
+              rate: i.rate || "0",
+              discountPercent: i.discountPercent || "0",
+              cgstPercent: i.cgstPercent || "9",
+              cgstAmount: "0", sgstPercent: i.sgstPercent || "9", sgstAmount: "0",
+              igstPercent: i.igstPercent || "0", igstAmount: "0",
+              taxableAmount: "0", lineTotal: "0", itemType: i.itemType || "Product",
+            }, detectedGst)));
           }
         }
       });
     }
   }, [isEdit, doc?.id]);
 
+  useEffect(() => {
+    const newGst = form.placeOfSupply === COMPANY_INFO.stateCode ? "cgst_sgst" : "igst";
+    if (newGst !== gstType) {
+      setGstType(newGst);
+      setLineItems((prev) => prev.map((item) => calcDocItem(item, newGst)));
+    }
+  }, [form.placeOfSupply]);
+
   const updateLineItem = (index: number, updates: Partial<DocItem>) => {
-    setLineItems((prev) => prev.map((item, i) => i === index ? calcDocItem({ ...item, ...updates }) : item));
+    setLineItems((prev) => prev.map((item, i) => i === index ? calcDocItem({ ...item, ...updates }, gstType) : item));
   };
 
   const addLineItem = () => setLineItems((prev) => [...prev, emptyDocItem()]);
   const removeLineItem = (index: number) => setLineItems((prev) => prev.filter((_, i) => i !== index));
 
   const totals = useMemo(() => {
-    const subtotal = lineItems.reduce((s, item) => {
-      return s + (parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0);
-    }, 0);
-    const cgstTotal = lineItems.reduce((s, item) => {
-      const base = (parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0);
-      return s + base * (parseFloat(item.cgstPercentage) || 0) / 100;
-    }, 0);
-    const sgstTotal = lineItems.reduce((s, item) => {
-      const base = (parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0);
-      return s + base * (parseFloat(item.sgstPercentage) || 0) / 100;
-    }, 0);
-    const grandTotal = subtotal + cgstTotal + sgstTotal;
-    return { subtotal, cgstTotal, sgstTotal, grandTotal };
+    const subtotal = lineItems.reduce((s, item) => s + (parseFloat(item.quantity) || 0) * (parseFloat(item.rate) || 0), 0);
+    const taxableAmount = lineItems.reduce((s, item) => s + parseFloat(item.taxableAmount || "0"), 0);
+    const cgstTotal = lineItems.reduce((s, item) => s + parseFloat(item.cgstAmount || "0"), 0);
+    const sgstTotal = lineItems.reduce((s, item) => s + parseFloat(item.sgstAmount || "0"), 0);
+    const igstTotal = lineItems.reduce((s, item) => s + parseFloat(item.igstAmount || "0"), 0);
+    const grandTotal = taxableAmount + cgstTotal + sgstTotal + igstTotal;
+    return { subtotal, taxableAmount, cgstTotal, sgstTotal, igstTotal, grandTotal };
   }, [lineItems]);
 
   const handleClientChange = (clientId: string) => {
     const client = clients.find((c) => c.id === parseInt(clientId));
-    setForm((f) => ({ ...f, clientId, clientName: client?.companyName || "" }));
+    setForm((f) => ({
+      ...f,
+      clientId,
+      clientName: client?.companyName || "",
+      placeOfSupply: client?.stateCode || COMPANY_INFO.stateCode,
+    }));
   };
 
-  const handleSave = async (sendStatus?: string) => {
+  const handleSave = async (saveStatus?: string) => {
     setSaving(true);
     setError("");
-    const status = sendStatus || form.status;
+    const status = saveStatus || form.status;
 
-    const payload: any = {
-      documentType,
-      clientId: form.clientId ? parseInt(form.clientId) : null,
-      clientName: form.clientName,
-      documentNumber: form.documentNumber,
-      issueDate: form.issueDate ? new Date(form.issueDate).toISOString() : null,
-      dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+    const basePayload: any = {
+      clientId: form.clientId ? parseInt(form.clientId) : 1,
+      clientName: form.clientName || "Unknown",
+      placeOfSupply: form.placeOfSupply,
       subtotal: totals.subtotal.toFixed(2),
+      discountType: "None",
+      discountValue: "0",
+      discountAmount: "0",
+      taxableAmount: totals.taxableAmount.toFixed(2),
       cgstTotal: totals.cgstTotal.toFixed(2),
       sgstTotal: totals.sgstTotal.toFixed(2),
+      igstTotal: totals.igstTotal.toFixed(2),
+      roundOff: "0",
       grandTotal: totals.grandTotal.toFixed(2),
       notes: form.notes,
-      terms: form.terms,
+      termsAndConditions: form.termsAndConditions,
       status,
-      items: lineItems.map(({ id, documentId, ...rest }) => rest),
+      items: lineItems.map(({ ...rest }) => rest),
     };
 
+    if (documentType === "Quotation") {
+      basePayload.quotationDate = new Date(form.docDate).toISOString();
+      basePayload.validUntil = form.dueDate ? new Date(form.dueDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString();
+    } else if (documentType === "Proforma Invoice") {
+      basePayload.proformaDate = new Date(form.docDate).toISOString();
+      basePayload.validUntil = form.dueDate ? new Date(form.dueDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString();
+    } else if (documentType === "Sales Order") {
+      basePayload.orderDate = new Date(form.docDate).toISOString();
+      basePayload.paymentTerms = form.termsAndConditions;
+    } else if (documentType === "Invoice") {
+      basePayload.invoiceDate = new Date(form.docDate).toISOString();
+      basePayload.dueDate = form.dueDate ? new Date(form.dueDate).toISOString() : new Date(Date.now() + 30 * 86400000).toISOString();
+      basePayload.amountInWords = "";
+      basePayload.balanceDue = totals.grandTotal.toFixed(2);
+    } else if (documentType === "Delivery Challan") {
+      basePayload.challanDate = new Date(form.docDate).toISOString();
+      basePayload.approximateValue = totals.grandTotal.toFixed(2);
+      delete basePayload.subtotal;
+      delete basePayload.taxableAmount;
+      delete basePayload.cgstTotal;
+      delete basePayload.sgstTotal;
+      delete basePayload.igstTotal;
+      delete basePayload.discountType;
+      delete basePayload.discountValue;
+      delete basePayload.discountAmount;
+      delete basePayload.roundOff;
+      delete basePayload.grandTotal;
+      basePayload.items = lineItems.map((item) => ({
+        description: item.description,
+        hsnSac: item.hsnSac,
+        itemType: item.itemType,
+        dispatchedQty: item.quantity,
+        uom: item.uom,
+        rate: item.rate,
+      }));
+    } else if (documentType === "Sales Return") {
+      basePayload.returnDate = new Date(form.docDate).toISOString();
+      basePayload.sourceInvoiceId = doc?.sourceInvoiceId || 1;
+      basePayload.returnType = "Partial";
+      basePayload.reason = "Other";
+    }
+
     try {
-      const url = isEdit ? `/api/sales-documents/${doc!.id}` : "/api/sales-documents";
+      const url = isEdit ? `${endpoint}/${doc!.id}` : endpoint;
       const method = isEdit ? "PATCH" : "POST";
-      const res = await authFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      const res = await authFetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(basePayload) });
       if (!res.ok) {
         const data = await res.json();
         setError(data.error || "Failed to save");
@@ -540,17 +734,16 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
           </button>
           <div>
             <h1 className="text-xl font-bold text-gray-900">{isEdit ? "Edit" : "New"} {documentType}</h1>
-            <p className="text-xs text-gray-400 mt-0.5">{form.documentNumber}</p>
+            {isEdit && <p className="text-xs text-gray-400 mt-0.5">{doc?.[numberField]}</p>}
+            {!isEdit && <p className="text-xs text-gray-400 mt-0.5">Auto-numbered on save</p>}
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={onCancel} className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-            Cancel
-          </button>
-          <button onClick={() => handleSave("Drafting")} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+          <button onClick={onCancel} className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
+          <button onClick={() => handleSave("Draft")} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
             <Save className="w-4 h-4" /> Save Draft
           </button>
-          <button onClick={() => handleSave("Unpaid")} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all">
+          <button onClick={() => handleSave(statusOptions[1] || "Sent")} disabled={saving} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50 transition-all">
             <Send className="w-4 h-4" /> Save & Send
           </button>
         </div>
@@ -585,23 +778,26 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
           <div className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Document Number</label>
-                <input type="text" value={form.documentNumber} onChange={(e) => setForm({ ...form, documentNumber: e.target.value })} className={inputCls} />
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Date</label>
+                <input type="date" value={form.docDate} onChange={(e) => setForm({ ...form, docDate: e.target.value })} className={inputCls} />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Issue Date</label>
-                <input type="date" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className={inputCls} />
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">{documentType === "Invoice" ? "Due Date" : "Valid Until"}</label>
+                <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={inputCls} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1.5">Due Date</label>
-                <input type="date" value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} className={inputCls} />
+                <label className="block text-xs font-medium text-gray-500 mb-1.5">Place of Supply (State Code)</label>
+                <input type="text" maxLength={2} value={form.placeOfSupply} onChange={(e) => setForm({ ...form, placeOfSupply: e.target.value })} className={inputCls} placeholder="27" />
+                <p className="text-[10px] text-gray-400 mt-1">
+                  {gstType === "igst" ? "Inter-state → IGST applies" : "Intra-state → CGST + SGST applies"}
+                </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })} className={inputCls + " cursor-pointer"}>
-                  {["Drafting", "Unpaid", "Paid"].map((s) => <option key={s} value={s}>{s}</option>)}
+                  {statusOptions.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
             </div>
@@ -613,30 +809,34 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-gray-100">
           <h2 className="text-sm font-bold text-gray-800">Line Items</h2>
           <button onClick={addLineItem} className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-[#E31E24] border border-red-200 rounded-lg hover:bg-red-50 transition-colors">
-            <PlusCircle className="w-3.5 h-3.5" /> Add New Row
+            <PlusCircle className="w-3.5 h-3.5" /> Add Item
           </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
               <tr className="bg-gray-50 text-[10px] text-gray-500 uppercase tracking-wider">
-                <th className="px-3 py-2.5 text-left font-semibold min-w-[220px]">Item</th>
-                <th className="px-2 py-2.5 text-center font-semibold w-[90px]">HSN / SAC</th>
-                <th className="px-2 py-2.5 text-center font-semibold w-[65px]">Qty</th>
-                <th className="px-2 py-2.5 text-center font-semibold w-[90px]">Rate</th>
-                <th className="px-2 py-2.5 text-center font-semibold w-[65px]">CGST %</th>
-                <th className="px-2 py-2.5 text-center font-semibold w-[65px]">SGST %</th>
-                <th className="px-2 py-2.5 text-right font-semibold w-[90px]">Tax Amount</th>
-                <th className="px-3 py-2.5 text-right font-semibold w-[110px]">Total Amount</th>
+                <th className="px-3 py-2.5 text-left font-semibold min-w-[200px]">Description</th>
+                <th className="px-2 py-2.5 text-center font-semibold w-[80px]">HSN/SAC</th>
+                <th className="px-2 py-2.5 text-center font-semibold w-[60px]">Qty</th>
+                <th className="px-2 py-2.5 text-center font-semibold w-[55px]">UOM</th>
+                <th className="px-2 py-2.5 text-center font-semibold w-[80px]">Rate</th>
+                {gstType === "cgst_sgst" ? (
+                  <>
+                    <th className="px-2 py-2.5 text-center font-semibold w-[55px]">CGST%</th>
+                    <th className="px-2 py-2.5 text-center font-semibold w-[55px]">SGST%</th>
+                  </>
+                ) : (
+                  <th className="px-2 py-2.5 text-center font-semibold w-[55px]">IGST%</th>
+                )}
+                <th className="px-2 py-2.5 text-right font-semibold w-[90px]">Tax</th>
+                <th className="px-3 py-2.5 text-right font-semibold w-[100px]">Total</th>
                 <th className="w-[36px]"></th>
               </tr>
             </thead>
             <tbody>
               {lineItems.map((item, idx) => {
-                const base = (parseFloat(item.qty) || 0) * (parseFloat(item.rate) || 0);
-                const cgstAmt = base * (parseFloat(item.cgstPercentage) || 0) / 100;
-                const sgstAmt = base * (parseFloat(item.sgstPercentage) || 0) / 100;
-                const taxAmt = cgstAmt + sgstAmt;
+                const taxAmt = parseFloat(item.cgstAmount || "0") + parseFloat(item.sgstAmount || "0") + parseFloat(item.igstAmount || "0");
                 return (
                   <tr key={idx} className="border-t border-gray-50 hover:bg-gray-50/30 group transition-colors">
                     <td className="px-3 py-1.5">
@@ -646,23 +846,30 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
                       <input type="text" value={item.hsnSac} onChange={(e) => updateLineItem(idx, { hsnSac: e.target.value })} placeholder="9983" className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors font-mono" />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input type="number" value={item.qty} onChange={(e) => updateLineItem(idx, { qty: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                      <input type="number" value={item.quantity} onChange={(e) => updateLineItem(idx, { quantity: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input type="text" value={item.uom} onChange={(e) => updateLineItem(idx, { uom: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors" />
                     </td>
                     <td className="px-2 py-1.5">
                       <input type="number" value={item.rate} onChange={(e) => updateLineItem(idx, { rate: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
                     </td>
-                    <td className="px-2 py-1.5">
-                      <input type="number" value={item.cgstPercentage} onChange={(e) => updateLineItem(idx, { cgstPercentage: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <input type="number" value={item.sgstPercentage} onChange={(e) => updateLineItem(idx, { sgstPercentage: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
-                    </td>
-                    <td className="px-2 py-1.5 text-right text-xs text-gray-500 font-medium">
-                      {formatCurrency(taxAmt)}
-                    </td>
-                    <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-800">
-                      {formatCurrency(parseFloat(item.lineTotal) || 0)}
-                    </td>
+                    {gstType === "cgst_sgst" ? (
+                      <>
+                        <td className="px-2 py-1.5">
+                          <input type="number" value={item.cgstPercent} onChange={(e) => updateLineItem(idx, { cgstPercent: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <input type="number" value={item.sgstPercent} onChange={(e) => updateLineItem(idx, { sgstPercent: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                        </td>
+                      </>
+                    ) : (
+                      <td className="px-2 py-1.5">
+                        <input type="number" value={item.igstPercent} onChange={(e) => updateLineItem(idx, { igstPercent: e.target.value })} className="w-full text-center text-xs bg-transparent outline-none border-b border-transparent focus:border-gray-300 py-1.5 transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                      </td>
+                    )}
+                    <td className="px-2 py-1.5 text-right text-xs text-gray-500 font-medium">{formatCurrency(taxAmt)}</td>
+                    <td className="px-3 py-1.5 text-right text-xs font-bold text-gray-800">{formatCurrency(parseFloat(item.lineTotal) || 0)}</td>
                     <td className="px-1 py-1.5">
                       {lineItems.length > 1 && (
                         <button onClick={() => removeLineItem(idx)} className="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100">
@@ -686,7 +893,7 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1.5">Terms & Conditions</label>
-            <textarea rows={3} value={form.terms} onChange={(e) => setForm({ ...form, terms: e.target.value })} className={inputCls + " resize-none"} />
+            <textarea rows={3} value={form.termsAndConditions} onChange={(e) => setForm({ ...form, termsAndConditions: e.target.value })} className={inputCls + " resize-none"} />
           </div>
         </div>
 
@@ -694,17 +901,30 @@ function DocumentBuilder({ documentType, doc, clients, onSave, onCancel }: {
           <h3 className="text-sm font-bold text-gray-800 mb-4">Summary</h3>
           <div className="space-y-3 text-sm">
             <div className="flex justify-between">
-              <span className="text-gray-400">Sub Total</span>
+              <span className="text-gray-400">Subtotal</span>
               <span className="font-semibold text-gray-700">{formatCurrency(totals.subtotal)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-400">CGST</span>
-              <span className="font-semibold text-gray-700">{formatCurrency(totals.cgstTotal)}</span>
+              <span className="text-gray-400">Taxable Amount</span>
+              <span className="font-semibold text-gray-700">{formatCurrency(totals.taxableAmount)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">SGST</span>
-              <span className="font-semibold text-gray-700">{formatCurrency(totals.sgstTotal)}</span>
-            </div>
+            {gstType === "cgst_sgst" ? (
+              <>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">CGST</span>
+                  <span className="font-semibold text-gray-700">{formatCurrency(totals.cgstTotal)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-400">SGST</span>
+                  <span className="font-semibold text-gray-700">{formatCurrency(totals.sgstTotal)}</span>
+                </div>
+              </>
+            ) : (
+              <div className="flex justify-between">
+                <span className="text-gray-400">IGST</span>
+                <span className="font-semibold text-gray-700">{formatCurrency(totals.igstTotal)}</span>
+              </div>
+            )}
             <div className="border-t-2 border-[#E31E24]/20 pt-3">
               <div className="flex justify-between">
                 <span className="text-base font-black text-gray-800">Grand Total</span>

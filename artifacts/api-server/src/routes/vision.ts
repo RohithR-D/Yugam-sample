@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { db } from "@workspace/db";
 import {
   visionGeneratedReportsTable, insertVisionReportSchema,
-  transactionsTable, projectsTable, invoicesTable,
+  transactionsTable, projectsTable, salesInvoicesTable,
   chartOfAccountsTable, accountsReceivableTable, accountsPayableTable,
 } from "@workspace/db/schema";
 import { eq, desc, sql, and, gte, lte } from "drizzle-orm";
@@ -36,7 +36,7 @@ visionRouter.get("/vision/executive-summary", async (_req: Request, res: Respons
 
     const [ticketCount] = await db.select({
       count: sql<number>`count(*)::int`,
-    }).from(invoicesTable).where(eq(invoicesTable.status, "Pending"));
+    }).from(salesInvoicesTable).where(eq(salesInvoicesTable.paymentStatus, "Unpaid"));
 
     const cashFlowData = await db.select({
       month: sql<string>`to_char(date, 'Mon')`,
@@ -100,9 +100,9 @@ visionRouter.get("/vision/financial-health", async (_req: Request, res: Response
         else '90+ days'
       end`);
 
-    const topInvoices = await db.select().from(invoicesTable)
-      .where(eq(invoicesTable.status, "Pending"))
-      .orderBy(desc(sql`${invoicesTable.grandTotal}::numeric`))
+    const topInvoices = await db.select().from(salesInvoicesTable)
+      .where(eq(salesInvoicesTable.paymentStatus, "Unpaid"))
+      .orderBy(desc(sql`${salesInvoicesTable.grandTotal}::numeric`))
       .limit(5);
 
     const buckets = ["0-30 days", "31-60 days", "61-90 days", "90+ days"];

@@ -5,7 +5,7 @@ import {
   tasksTable,
   projectsTable,
   transactionsTable,
-  invoicesTable,
+  salesInvoicesTable,
   clientsTable,
   contractsTable,
   visitorsTable,
@@ -30,7 +30,7 @@ dashboardSummaryRouter.get("/dashboard-summary", async (_req: Request, res: Resp
     const [credits] = await db.select({ total: sql<string>`coalesce(sum(amount), 0)` }).from(transactionsTable).where(eq(transactionsTable.type, "Credit"));
     const [debits] = await db.select({ total: sql<string>`coalesce(sum(amount), 0)` }).from(transactionsTable).where(eq(transactionsTable.type, "Debit"));
 
-    const [outstandingInvoices] = await db.select({ total: sql<string>`coalesce(sum(amount), 0)`, count: sql<number>`count(*)::int` }).from(invoicesTable).where(ne(invoicesTable.status, "Paid"));
+    const [outstandingInvoices] = await db.select({ total: sql<string>`coalesce(sum(${salesInvoicesTable.balanceDue}::numeric), 0)`, count: sql<number>`count(*)::int` }).from(salesInvoicesTable).where(ne(salesInvoicesTable.status, "Paid"));
 
     const recentTransactions = await db.select().from(transactionsTable).orderBy(desc(transactionsTable.date)).limit(5);
     const recentTasks = await db.select().from(tasksTable).orderBy(desc(tasksTable.createdAt)).limit(5);

@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { salesDocumentsTable } from "./salesDocuments";
 
-export const salesDocumentItemsTable = pgTable("sales_document_items", {
+export const salesDocumentItemsTable = pgTable("legacy_sales_document_items", {
   id: serial("id").primaryKey(),
   documentId: integer("document_id").references(() => salesDocumentsTable.id, { onDelete: "cascade" }).notNull(),
   description: text("description").notNull().default(""),

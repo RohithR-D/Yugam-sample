@@ -5,7 +5,7 @@ import {
   employeesTable,
   projectsTable,
   tasksTable,
-  invoicesTable,
+  salesInvoicesTable,
   contractsTable,
   transactionsTable,
 } from "@workspace/db/schema";
@@ -32,8 +32,8 @@ searchRouter.get("/search", async (req: Request, res: Response) => {
         .from(projectsTable).where(ilike(projectsTable.projectName, pattern)).limit(5),
       db.select({ id: tasksTable.id, title: tasksTable.title, status: tasksTable.status })
         .from(tasksTable).where(ilike(tasksTable.title, pattern)).limit(5),
-      db.select({ id: invoicesTable.id, invoiceNumber: invoicesTable.invoiceNumber, clientName: invoicesTable.clientName })
-        .from(invoicesTable).where(or(ilike(invoicesTable.invoiceNumber, pattern), ilike(invoicesTable.clientName, pattern))).limit(5),
+      db.select({ id: salesInvoicesTable.id, invoiceNumber: salesInvoicesTable.invoiceNumber, clientName: salesInvoicesTable.clientName })
+        .from(salesInvoicesTable).where(or(ilike(salesInvoicesTable.invoiceNumber, pattern), ilike(salesInvoicesTable.clientName, pattern))).limit(5),
       db.select({ id: contractsTable.id, title: contractsTable.title, partyName: contractsTable.partyName })
         .from(contractsTable).where(or(ilike(contractsTable.title, pattern), ilike(contractsTable.partyName, pattern))).limit(5),
       db.select({ id: transactionsTable.id, description: transactionsTable.description, category: transactionsTable.category })

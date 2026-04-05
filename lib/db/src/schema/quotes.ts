@@ -2,7 +2,7 @@ import { pgTable, serial, varchar, numeric, timestamp } from "drizzle-orm/pg-cor
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
-export const quotesTable = pgTable("quotes", {
+export const quotesTable = pgTable("legacy_quotes", {
   id: serial("id").primaryKey(),
   clientName: varchar("client_name", { length: 255 }).notNull(),
   quoteNumber: varchar("quote_number", { length: 50 }).notNull().unique(),

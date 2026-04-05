@@ -3,7 +3,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { clientsTable } from "./clients";
 
-export const invoicesTable = pgTable("invoices", {
+export const invoicesTable = pgTable("legacy_invoices", {
   id: serial("id").primaryKey(),
   clientId: integer("client_id").references(() => clientsTable.id),
   clientName: varchar("client_name", { length: 255 }).notNull(),
