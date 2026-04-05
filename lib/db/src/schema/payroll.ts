@@ -1,9 +1,11 @@
-import { pgTable, serial, varchar, numeric, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, numeric, integer, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { employeesTable } from "./employees";
 
 export const payrollTable = pgTable("payroll", {
   id: serial("id").primaryKey(),
+  employeeId: integer("employee_id").references(() => employeesTable.id),
   employeeName: varchar("employee_name", { length: 255 }).notNull(),
   payPeriod: varchar("pay_period", { length: 100 }).notNull(),
   grossPay: numeric("gross_pay", { precision: 12, scale: 2 }).notNull().default("0"),

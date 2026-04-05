@@ -26,7 +26,7 @@ export const insertProjectSchema = createInsertSchema(projectsTable).omit({
 
 export const flowMilestonesTable = pgTable("flow_milestones", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 255 }).notNull(),
   targetDate: timestamp("target_date").notNull(),
   completionPercent: integer("completion_percent").notNull().default(0),
@@ -43,7 +43,7 @@ export const insertFlowMilestoneSchema = createInsertSchema(flowMilestonesTable)
 
 export const flowBudgetsTable = pgTable("flow_budgets", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   category: varchar("category", { length: 100 }).notNull().default("General"),
   description: varchar("description", { length: 255 }).notNull().default(""),
   estimatedBudget: numeric("estimated_budget", { precision: 14, scale: 2 }).notNull().default("0"),
@@ -59,7 +59,7 @@ export const insertFlowBudgetSchema = createInsertSchema(flowBudgetsTable).omit(
 
 export const flowDocumentsTable = pgTable("flow_documents", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projectsTable.id, { onDelete: "cascade" }),
   fileName: varchar("file_name", { length: 255 }).notNull(),
   fileUrl: varchar("file_url", { length: 500 }).notNull().default(""),
   fileType: varchar("file_type", { length: 50 }).notNull().default("Contracts"),

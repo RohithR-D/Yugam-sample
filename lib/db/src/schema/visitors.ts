@@ -1,13 +1,14 @@
 import { pgTable, serial, varchar, timestamp, integer, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { employeesTable } from "./employees";
 
 export const visitorsTable = pgTable("visitors", {
   id: serial("id").primaryKey(),
   visitorName: varchar("visitor_name", { length: 300 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull().default(""),
   photoUrl: text("photo_url").notNull().default(""),
-  hostEmployeeId: integer("host_employee_id"),
+  hostEmployeeId: integer("host_employee_id").references(() => employeesTable.id),
   hostName: varchar("host_name", { length: 300 }).notNull(),
   purpose: varchar("purpose", { length: 50 }).notNull().default("Meeting"),
   ticketRef: varchar("ticket_ref", { length: 100 }).notNull().default(""),

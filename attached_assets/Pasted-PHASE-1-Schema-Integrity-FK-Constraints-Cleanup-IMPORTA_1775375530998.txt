@@ -1,0 +1,63 @@
+PHASE 1: Schema Integrity — FK Constraints & Cleanup
+
+IMPORTANT: Do NOT change any UI. Do NOT add new features. This is ONLY a database migration to add proper foreign key constraints and clean up redundant tables.
+
+STEP 1: Add formal FK constraints to ALL logical links.
+Run migrations to add FOREIGN KEY constraints for every "logical link" currently in the schema. Here is the complete list:
+
+Forge (Production) module:
+- forge_bom_materials.bomId → forge_bom.id
+- forge_bom_materials.itemId → inventory_catalog.id
+- forge_bom_routing.bomId → forge_bom.id
+- forge_bom_routing.workstationId → forge_workstations.id
+- forge_work_orders.bomId → forge_bom.id
+- forge_work_orders.assignedWorkstationId → forge_workstations.id
+- forge_quality_control.workOrderId → forge_work_orders.id
+- forge_downtime_logs.workstationId → forge_workstations.id
+
+Flex (Procurement) module:
+- purchase_requests.materialRequestId → material_requests.id
+- rfq_requests.purchaseRequestId → purchase_requests.id
+- rfq_bids.rfqId → rfq_requests.id
+- flex_purchase_orders.rfqId → rfq_requests.id
+- flex_po_items.poId → flex_purchase_orders.id (ON DELETE CASCADE)
+- goods_receipts.poId → flex_purchase_orders.id
+- grn_items.grnId → goods_receipts.id (ON DELETE CASCADE)
+- purchase_invoices.poId → flex_purchase_orders.id
+- purchase_invoices.grnId → goods_receipts.id
+- purchase_returns.poId → flex_purchase_orders.id
+- purchase_returns.grnId → goods_receipts.id
+
+Flow (Projects) module:
+- flow_milestones.projectId → projects.id (ON DELETE CASCADE)
+- flow_budgets.projectId → projects.id (ON DELETE CASCADE)
+- flow_documents.projectId → projects.id (ON DELETE CASCADE)
+- tasks.parentProject → projects.id (rename column to projectId)
+- sprint_tickets.parentProject → projects.id (rename column to projectId)
+
+Ledger module:
+- journal_lines.journalEntryId → journal_entries.id (ON DELETE CASCADE)
+- journal_lines.accountId → chart_of_accounts.id
+- chart_of_accounts.parentId → chart_of_accounts.id (self-referencing)
+
+Sprint module:
+- sprint_timesheets.referenceId — this is polymorphic (Task or Ticket). Add referenceType ENUM check and validate at application level. Do NOT add FK.
+
+Gate module:
+- visitors.hostEmployeeId → employees.id
+
+Trail module:
+- trail_claims.ledgerJournalId → journal_entries.id
+
+HR module:
+- payroll: Add employeeId INT FK → employees.id. Keep employeeName for display but add the proper FK.
+
+STEP 2: Before running migrations, check for orphaned records.
+For each FK being added, first run a SELECT to find any rows where the referenced ID doesn't exist in the parent table. Log these to console. SET those orphaned FK columns to NULL (if nullable) or delete the orphaned rows (if not nullable) BEFORE adding the constraint.
+
+STEP 3: Add indexes on all new FK columns for query performance.
+CREATE INDEX on every FK column that doesn't already have one.
+
+Do NOT touch the Sales module tables — we are rebuilding those separately.
+Do NOT touch any UI, API routes, or frontend code.
+Only run migrations and update the schema definition file.

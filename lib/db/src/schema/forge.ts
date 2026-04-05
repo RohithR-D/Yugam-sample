@@ -1,6 +1,7 @@
 import { pgTable, serial, varchar, integer, numeric, timestamp, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { inventoryCatalogTable } from "./inventoryCatalog";
 
 export const forgeWorkstationsTable = pgTable("forge_workstations", {
   id: serial("id").primaryKey(),
@@ -37,9 +38,9 @@ export const insertForgeBOMSchema = createInsertSchema(forgeBOMTable).omit({
 
 export const forgeBOMMaterialsTable = pgTable("forge_bom_materials", {
   id: serial("id").primaryKey(),
-  bomId: integer("bom_id").notNull(),
+  bomId: integer("bom_id").notNull().references(() => forgeBOMTable.id),
   itemName: varchar("item_name", { length: 255 }).notNull(),
-  itemId: integer("item_id"),
+  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
   qty: numeric("qty", { precision: 12, scale: 2 }).notNull().default("1"),
   uom: varchar("uom", { length: 30 }).notNull().default("Nos"),
   wastagePercent: numeric("wastage_percent", { precision: 5, scale: 2 }).notNull().default("0"),
@@ -51,9 +52,9 @@ export const insertForgeBOMMaterialSchema = createInsertSchema(forgeBOMMaterials
 
 export const forgeBOMRoutingTable = pgTable("forge_bom_routing", {
   id: serial("id").primaryKey(),
-  bomId: integer("bom_id").notNull(),
+  bomId: integer("bom_id").notNull().references(() => forgeBOMTable.id),
   sequenceNo: integer("sequence_no").notNull().default(1),
-  workstationId: integer("workstation_id").notNull(),
+  workstationId: integer("workstation_id").notNull().references(() => forgeWorkstationsTable.id),
   workstationName: varchar("workstation_name", { length: 255 }).notNull().default(""),
   operationName: varchar("operation_name", { length: 255 }).notNull().default(""),
   estimatedMinutes: integer("estimated_minutes").notNull().default(0),
@@ -67,11 +68,11 @@ export const forgeWorkOrdersTable = pgTable("forge_work_orders", {
   id: serial("id").primaryKey(),
   woNumber: varchar("wo_number", { length: 100 }).notNull(),
   productName: varchar("product_name", { length: 255 }).notNull(),
-  bomId: integer("bom_id"),
+  bomId: integer("bom_id").references(() => forgeBOMTable.id),
   targetQty: integer("target_qty").notNull().default(1),
   producedQty: integer("produced_qty").notNull().default(0),
   scrapQty: integer("scrap_qty").notNull().default(0),
-  assignedWorkstationId: integer("assigned_workstation_id"),
+  assignedWorkstationId: integer("assigned_workstation_id").references(() => forgeWorkstationsTable.id),
   assignedWorkstationName: varchar("assigned_workstation_name", { length: 255 }).notNull().default(""),
   status: varchar("status", { length: 30 }).notNull().default("Draft"),
   priority: varchar("priority", { length: 20 }).notNull().default("Normal"),
@@ -93,7 +94,7 @@ export const insertForgeWorkOrderSchema = createInsertSchema(forgeWorkOrdersTabl
 
 export const forgeQualityControlTable = pgTable("forge_quality_control", {
   id: serial("id").primaryKey(),
-  workOrderId: integer("work_order_id").notNull(),
+  workOrderId: integer("work_order_id").notNull().references(() => forgeWorkOrdersTable.id),
   woNumber: varchar("wo_number", { length: 100 }).notNull().default(""),
   productName: varchar("product_name", { length: 255 }).notNull().default(""),
   inspectedQty: integer("inspected_qty").notNull().default(0),
@@ -115,7 +116,7 @@ export const insertForgeQualityControlSchema = createInsertSchema(forgeQualityCo
 
 export const forgeDowntimeLogsTable = pgTable("forge_downtime_logs", {
   id: serial("id").primaryKey(),
-  workstationId: integer("workstation_id").notNull(),
+  workstationId: integer("workstation_id").notNull().references(() => forgeWorkstationsTable.id),
   workstationName: varchar("workstation_name", { length: 255 }).notNull().default(""),
   reason: varchar("reason", { length: 50 }).notNull().default("Mechanical Failure"),
   startTime: timestamp("start_time").notNull(),

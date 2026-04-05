@@ -35,6 +35,12 @@ The project is structured as a pnpm monorepo to manage shared code and dependenc
 **Database Layer (`@workspace/db`):**
 - Uses Drizzle ORM with PostgreSQL, including a comprehensive schema for all ERP entities.
 - Drizzle Kit is used for schema migrations.
+- **46 formal FK constraints** enforce referential integrity across all modules (Forge, Flex, Flow, Sprint, Ledger, Gate, Trail, Fleet, HR/Payroll, Sales).
+- **46 indexes** on all FK columns for query performance.
+- Key FK relationships: Forge BOM/routing/work orders → workstations/catalog; Flex procurement chain (material_requests → purchase_requests → rfq → POs → GRNs → invoices/returns); Flow milestones/budgets/documents → projects (CASCADE); Tasks/Tickets → projects; Journal lines → entries (CASCADE) + accounts; Visitors → employees; Trail claims → journal_entries; Payroll → employees; Fleet trips/expenses → vehicles.
+- `trail_claims.ledgerJournalId` changed from varchar to integer FK for proper referential integrity.
+- `payroll.employeeId` added as integer FK to employees (keeps employeeName for display).
+- `sprint_timesheets.referenceId` is polymorphic (Task/Ticket) — validated at application level, no DB FK.
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 specification defines the API contract.

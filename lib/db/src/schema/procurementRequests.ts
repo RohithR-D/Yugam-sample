@@ -26,7 +26,7 @@ export const insertMaterialRequestSchema = createInsertSchema(materialRequestsTa
 
 export const purchaseRequestsTable = pgTable("purchase_requests", {
   id: serial("id").primaryKey(),
-  materialRequestId: integer("material_request_id"),
+  materialRequestId: integer("material_request_id").references(() => materialRequestsTable.id),
   itemName: varchar("item_name", { length: 255 }).notNull(),
   itemId: integer("item_id"),
   requestedQty: integer("requested_qty").notNull().default(1),
@@ -50,7 +50,7 @@ export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequestsTa
 
 export const rfqTable = pgTable("rfq_requests", {
   id: serial("id").primaryKey(),
-  purchaseRequestId: integer("purchase_request_id"),
+  purchaseRequestId: integer("purchase_request_id").references(() => purchaseRequestsTable.id),
   rfqNumber: varchar("rfq_number", { length: 100 }).notNull(),
   itemName: varchar("item_name", { length: 255 }).notNull(),
   itemId: integer("item_id"),
@@ -72,7 +72,7 @@ export const insertRfqSchema = createInsertSchema(rfqTable).omit({
 
 export const rfqBidsTable = pgTable("rfq_bids", {
   id: serial("id").primaryKey(),
-  rfqId: integer("rfq_id").notNull(),
+  rfqId: integer("rfq_id").notNull().references(() => rfqTable.id),
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
   unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull().default("0"),
   taxPercent: numeric("tax_percent", { precision: 5, scale: 2 }).notNull().default("0"),
@@ -91,7 +91,7 @@ export const flexPurchaseOrdersTable = pgTable("flex_purchase_orders", {
   id: serial("id").primaryKey(),
   poNumber: varchar("po_number", { length: 100 }).notNull(),
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  rfqId: integer("rfq_id"),
+  rfqId: integer("rfq_id").references(() => rfqTable.id),
   poDate: timestamp("po_date"),
   deliveryDate: timestamp("delivery_date"),
   subtotal: numeric("subtotal", { precision: 14, scale: 2 }).notNull().default("0"),
@@ -115,7 +115,7 @@ export const insertFlexPOSchema = createInsertSchema(flexPurchaseOrdersTable).om
 
 export const flexPOItemsTable = pgTable("flex_po_items", {
   id: serial("id").primaryKey(),
-  poId: integer("po_id").notNull(),
+  poId: integer("po_id").notNull().references(() => flexPurchaseOrdersTable.id, { onDelete: "cascade" }),
   description: varchar("description", { length: 500 }).notNull(),
   hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
   qty: integer("qty").notNull().default(1),
@@ -131,7 +131,7 @@ export const insertFlexPOItemSchema = createInsertSchema(flexPOItemsTable).omit(
 export const goodsReceiptsTable = pgTable("goods_receipts", {
   id: serial("id").primaryKey(),
   grnNumber: varchar("grn_number", { length: 100 }).notNull(),
-  poId: integer("po_id").notNull(),
+  poId: integer("po_id").notNull().references(() => flexPurchaseOrdersTable.id),
   vendorName: varchar("vendor_name", { length: 255 }).notNull().default(""),
   receivedDate: timestamp("received_date"),
   receivedBy: varchar("received_by", { length: 100 }).notNull().default(""),
@@ -150,7 +150,7 @@ export const insertGoodsReceiptSchema = createInsertSchema(goodsReceiptsTable).o
 
 export const grnItemsTable = pgTable("grn_items", {
   id: serial("id").primaryKey(),
-  grnId: integer("grn_id").notNull(),
+  grnId: integer("grn_id").notNull().references(() => goodsReceiptsTable.id, { onDelete: "cascade" }),
   description: varchar("description", { length: 500 }).notNull(),
   orderedQty: integer("ordered_qty").notNull().default(0),
   receivedQty: integer("received_qty").notNull().default(0),
@@ -164,8 +164,8 @@ export const purchaseInvoicesTable = pgTable("purchase_invoices", {
   id: serial("id").primaryKey(),
   invoiceNumber: varchar("invoice_number", { length: 100 }).notNull(),
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  poId: integer("po_id"),
-  grnId: integer("grn_id"),
+  poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
+  grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
   invoiceDate: timestamp("invoice_date"),
   invoiceAmount: numeric("invoice_amount", { precision: 14, scale: 2 }).notNull().default("0"),
   poAmount: numeric("po_amount", { precision: 14, scale: 2 }).notNull().default("0"),
@@ -189,8 +189,8 @@ export const purchaseReturnsTable = pgTable("purchase_returns", {
   id: serial("id").primaryKey(),
   returnNumber: varchar("return_number", { length: 100 }).notNull(),
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  poId: integer("po_id"),
-  grnId: integer("grn_id"),
+  poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
+  grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
   itemName: varchar("item_name", { length: 255 }).notNull(),
   returnedQty: integer("returned_qty").notNull().default(0),
   reason: varchar("reason", { length: 30 }).notNull().default("Damage"),

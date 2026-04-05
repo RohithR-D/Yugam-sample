@@ -1,4 +1,4 @@
- import { pgTable, serial, varchar, numeric, integer, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, numeric, integer, text, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -8,7 +8,7 @@ export const chartOfAccountsTable = pgTable("chart_of_accounts", {
   accountName: varchar("account_name", { length: 255 }).notNull(),
   accountType: varchar("account_type", { length: 50 }).notNull().default("Asset"),
   currentBalance: numeric("current_balance", { precision: 16, scale: 2 }).notNull().default("0"),
-  parentId: integer("parent_id"),
+  parentId: integer("parent_id").references((): any => chartOfAccountsTable.id),
   description: text("description").notNull().default(""),
   isActive: varchar("is_active", { length: 10 }).notNull().default("Yes"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -42,8 +42,8 @@ export const insertJournalEntrySchema = createInsertSchema(journalEntriesTable).
 
 export const journalLinesTable = pgTable("journal_lines", {
   id: serial("id").primaryKey(),
-  journalEntryId: integer("journal_entry_id").notNull(),
-  accountId: integer("account_id").notNull(),
+  journalEntryId: integer("journal_entry_id").notNull().references(() => journalEntriesTable.id, { onDelete: "cascade" }),
+  accountId: integer("account_id").notNull().references(() => chartOfAccountsTable.id),
   accountCode: varchar("account_code", { length: 20 }).notNull().default(""),
   accountName: varchar("account_name", { length: 255 }).notNull().default(""),
   debit: numeric("debit", { precision: 16, scale: 2 }).notNull().default("0"),

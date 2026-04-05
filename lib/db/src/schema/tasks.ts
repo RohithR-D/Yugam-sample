@@ -1,6 +1,7 @@
 import { pgTable, serial, varchar, text, integer, numeric, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { projectsTable } from "./projects";
 
 export const tasksTable = pgTable("tasks", {
   id: serial("id").primaryKey(),
@@ -9,7 +10,7 @@ export const tasksTable = pgTable("tasks", {
   assignee: varchar("assignee", { length: 255 }).notNull(),
   priority: varchar("priority", { length: 50 }).notNull().default("Medium"),
   status: varchar("status", { length: 50 }).notNull().default("New"),
-  parentProject: integer("parent_project"),
+  parentProject: integer("parent_project").references(() => projectsTable.id),
   startDate: timestamp("start_date"),
   dueDate: timestamp("due_date").notNull(),
   attachments: text("attachments").notNull().default(""),
@@ -37,7 +38,7 @@ export const ticketsTable = pgTable("sprint_tickets", {
   type: varchar("type", { length: 50 }).notNull().default("Question"),
   priority: varchar("priority", { length: 50 }).notNull().default("Medium"),
   status: varchar("status", { length: 50 }).notNull().default("New"),
-  parentProject: integer("parent_project"),
+  parentProject: integer("parent_project").references(() => projectsTable.id),
   dueDate: timestamp("due_date"),
   contact: varchar("contact", { length: 255 }).notNull().default(""),
   description: text("description").notNull().default(""),
