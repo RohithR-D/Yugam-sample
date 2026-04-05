@@ -1,0 +1,56 @@
+PHASE 2: Sales Module — Complete Schema Rebuild
+
+We are replacing the current fragmented Sales tables with a clean, professional structure. This involves creating new tables, migrating data, and removing old tables.
+
+IMPORTANT: Reference the file "sales-module-spec.md" for the COMPLETE field definitions. I am attaching it. Every column, type, and constraint is defined there. Follow it exactly.
+
+STEP 1: Create new tables (in this order, because of FK dependencies):
+
+1. client_addresses — see spec for all columns
+2. quotations + quotation_items
+3. proforma_invoices + proforma_invoice_items
+4. sales_orders + sales_order_items (includes delivered_qty, billed_qty columns)
+5. delivery_challans + delivery_challan_items (includes ordered_qty, dispatched_qty, previously_dispatched_qty)
+6. sales_invoices + sales_invoice_items (includes journal_entry_id, irn_number, eway_bill fields)
+7. sales_returns + sales_return_items (includes restock boolean, restock_location_id, invoice_item_id)
+8. sales_payments (replaces receipts — includes tds_amount, tds_section, payment modes)
+9. document_sequences — for auto-numbering control
+
+STEP 2: Add these columns to the existing `clients` table:
+- gstin VARCHAR(15)
+- pan VARCHAR(10)
+- tan VARCHAR(10)
+- gst_treatment ENUM('Registered','Unregistered','Consumer','Composition','SEZ','Overseas','UIN Holders') — default 'Unregistered'
+- credit_limit DECIMAL(12,2)
+- payment_terms_default VARCHAR(100)
+- payment_due_days_default INT
+- currency_default VARCHAR(3) default 'INR'
+- state_code VARCHAR(2)
+
+STEP 3: Data migration — move existing data from old tables to new ones:
+- quotes → quotations (map fields as closely as possible, set status='Draft' for anything without a status)
+- invoices (type='Proforma') → proforma_invoices
+- invoices (type='Tax') → sales_invoices
+- invoices (type='Credit') → these become sales_returns
+- invoice_items → corresponding new items tables
+- sales_documents → map by documentType to the correct new table
+- sales_document_items → corresponding new items tables
+- receipts → sales_payments
+
+STEP 4: After migration, verify row counts match. Log any records that couldn't be migrated.
+
+STEP 5: Keep old tables but rename them with prefix "legacy_" (e.g., legacy_quotes, legacy_invoices). Do NOT delete yet. We'll drop them after verification.
+
+STEP 6: Update ALL API routes and controllers that reference the old table names to use the new ones. Update all frontend components that fetch from these endpoints.
+
+STEP 7: Implement document number auto-generation using the document_sequences table:
+- On INSERT into any sales document table, lock the sequence row, increment, generate the number in format {PREFIX}-{FY}-{0001}, and assign it.
+- Use database-level row locking (SELECT FOR UPDATE) to prevent duplicate numbers.
+
+STEP 8: Implement the GST tax-type auto-switch:
+- Create a utility function: given company_state_code and client_state_code (from client_addresses), return whether to use IGST or CGST+SGST.
+- When billing_address_id or shipping_address_id changes on any document, auto-recalculate all line item taxes using the correct type.
+- If place_of_supply state code = company state code → CGST + SGST (each = half of GST rate)
+- If place_of_supply state code ≠ company state code → IGST (= full GST rate)
+
+Do NOT implement cross-module automations yet (no journal entries, no AR updates). That comes in Phase 3.
