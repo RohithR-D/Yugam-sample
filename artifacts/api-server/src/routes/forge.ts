@@ -10,6 +10,7 @@ import {
   forgeDowntimeLogsTable, insertForgeDowntimeLogSchema,
 } from "@workspace/db/schema";
 import { eq, desc, sql } from "drizzle-orm";
+import { triggerWorkOrderStarted, triggerWorkOrderCompleted, triggerQualityRejection } from "./productionAutomation";
 
 const forgeRouter = Router();
 
@@ -119,30 +120,72 @@ forgeRouter.post("/forge/work-orders", async (req: Request, res: Response) => {
 });
 
 forgeRouter.patch("/forge/work-orders/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const validStatuses = ["Draft", "In Progress", "QC", "Completed"];
-  const validPriorities = ["Low", "Normal", "High", "Urgent"];
-  if (req.body.status !== undefined && !validStatuses.includes(req.body.status)) { res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` }); return; }
-  if (req.body.priority !== undefined && !validPriorities.includes(req.body.priority)) { res.status(400).json({ error: `Invalid priority. Must be one of: ${validPriorities.join(", ")}` }); return; }
-  if (req.body.producedQty !== undefined && (typeof req.body.producedQty !== "number" || req.body.producedQty < 0)) { res.status(400).json({ error: "producedQty must be a non-negative number" }); return; }
-  if (req.body.scrapQty !== undefined && (typeof req.body.scrapQty !== "number" || req.body.scrapQty < 0)) { res.status(400).json({ error: "scrapQty must be a non-negative number" }); return; }
-  if (req.body.targetQty !== undefined && (typeof req.body.targetQty !== "number" || req.body.targetQty < 1)) { res.status(400).json({ error: "targetQty must be a positive number" }); return; }
-  const updates: Record<string, any> = {};
-  if (req.body.status !== undefined) updates.status = req.body.status;
-  if (req.body.producedQty !== undefined) updates.producedQty = req.body.producedQty;
-  if (req.body.scrapQty !== undefined) updates.scrapQty = req.body.scrapQty;
-  if (req.body.targetQty !== undefined) updates.targetQty = req.body.targetQty;
-  if (req.body.assignedWorkstationId !== undefined) updates.assignedWorkstationId = req.body.assignedWorkstationId;
-  if (req.body.assignedWorkstationName !== undefined) updates.assignedWorkstationName = req.body.assignedWorkstationName;
-  if (req.body.notes !== undefined) updates.notes = req.body.notes;
-  if (req.body.priority !== undefined) updates.priority = req.body.priority;
-  if (req.body.startDate !== undefined) updates.startDate = new Date(req.body.startDate);
-  if (req.body.endDate !== undefined) updates.endDate = new Date(req.body.endDate);
-  if (Object.keys(updates).length === 0) { res.status(400).json({ error: "No valid fields to update" }); return; }
-  const [updated] = await db.update(forgeWorkOrdersTable).set(updates).where(eq(forgeWorkOrdersTable.id, id)).returning();
-  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const validStatuses = ["Draft", "Pending", "In Progress", "QC", "Completed"];
+    const validPriorities = ["Low", "Normal", "High", "Urgent"];
+    if (req.body.status !== undefined && !validStatuses.includes(req.body.status)) { res.status(400).json({ error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` }); return; }
+    if (req.body.priority !== undefined && !validPriorities.includes(req.body.priority)) { res.status(400).json({ error: `Invalid priority. Must be one of: ${validPriorities.join(", ")}` }); return; }
+    if (req.body.producedQty !== undefined && (typeof req.body.producedQty !== "number" || req.body.producedQty < 0)) { res.status(400).json({ error: "producedQty must be a non-negative number" }); return; }
+    if (req.body.scrapQty !== undefined && (typeof req.body.scrapQty !== "number" || req.body.scrapQty < 0)) { res.status(400).json({ error: "scrapQty must be a non-negative number" }); return; }
+    if (req.body.targetQty !== undefined && (typeof req.body.targetQty !== "number" || req.body.targetQty < 1)) { res.status(400).json({ error: "targetQty must be a positive number" }); return; }
+
+    const VALID_TRANSITIONS: Record<string, string[]> = {
+      "Draft": ["In Progress", "Pending"],
+      "Pending": ["In Progress", "Draft"],
+      "In Progress": ["QC", "Completed"],
+      "QC": ["Completed", "In Progress"],
+      "Completed": [],
+    };
+
+    const result = await db.transaction(async (tx) => {
+      const lockRows = await tx.execute(sql`SELECT id, status FROM forge_work_orders WHERE id = ${id} FOR UPDATE`);
+      const prev = (lockRows as any).rows?.[0] || (lockRows as any)[0];
+      if (!prev) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+      const previousStatus = prev.status;
+
+      if (req.body.status !== undefined && req.body.status !== previousStatus) {
+        const allowed = VALID_TRANSITIONS[previousStatus] || [];
+        if (!allowed.includes(req.body.status)) {
+          throw Object.assign(new Error(`Invalid status transition: ${previousStatus} → ${req.body.status}. Allowed: ${allowed.join(", ") || "none"}`), { statusCode: 400 });
+        }
+      }
+
+      const updates: Record<string, any> = {};
+      if (req.body.status !== undefined) updates.status = req.body.status;
+      if (req.body.producedQty !== undefined) updates.producedQty = req.body.producedQty;
+      if (req.body.scrapQty !== undefined) updates.scrapQty = req.body.scrapQty;
+      if (req.body.targetQty !== undefined) updates.targetQty = req.body.targetQty;
+      if (req.body.assignedWorkstationId !== undefined) updates.assignedWorkstationId = req.body.assignedWorkstationId;
+      if (req.body.assignedWorkstationName !== undefined) updates.assignedWorkstationName = req.body.assignedWorkstationName;
+      if (req.body.productItemId !== undefined) updates.productItemId = req.body.productItemId;
+      if (req.body.productionLocationId !== undefined) updates.productionLocationId = req.body.productionLocationId;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.priority !== undefined) updates.priority = req.body.priority;
+      if (req.body.startDate !== undefined) updates.startDate = new Date(req.body.startDate);
+      if (req.body.endDate !== undefined) updates.endDate = new Date(req.body.endDate);
+      if (Object.keys(updates).length === 0) throw Object.assign(new Error("No valid fields to update"), { statusCode: 400 });
+      const [updated] = await tx.update(forgeWorkOrdersTable).set(updates).where(eq(forgeWorkOrdersTable.id, id)).returning();
+
+      const newStatus = updated.status;
+      let automationResult = null;
+
+      if (newStatus === "In Progress" && previousStatus !== "In Progress") {
+        automationResult = await triggerWorkOrderStarted(id, tx as any);
+      } else if (newStatus === "Completed" && previousStatus !== "Completed") {
+        automationResult = await triggerWorkOrderCompleted(id, tx as any);
+      }
+
+      return { ...updated, automationResult };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Work Order PATCH error:", err);
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || "Internal server error", shortages: err.shortages });
+  }
 });
 
 forgeRouter.delete("/forge/work-orders/:id", async (req: Request, res: Response) => {
@@ -158,10 +201,26 @@ forgeRouter.get("/forge/quality-control", async (_req: Request, res: Response) =
 });
 
 forgeRouter.post("/forge/quality-control", async (req: Request, res: Response) => {
-  const parsed = insertForgeQualityControlSchema.safeParse(req.body);
-  if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
-  const [row] = await db.insert(forgeQualityControlTable).values(parsed.data).returning();
-  res.status(201).json(row);
+  try {
+    const parsed = insertForgeQualityControlSchema.safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      const [row] = await tx.insert(forgeQualityControlTable).values(parsed.data).returning();
+
+      let automationResult = null;
+      if (row.rejectedQty > 0) {
+        automationResult = await triggerQualityRejection(row.id, tx as any);
+      }
+
+      return { ...row, automationResult };
+    });
+
+    res.status(201).json(result);
+  } catch (err: any) {
+    console.error("QC POST error:", err);
+    res.status(500).json({ error: err.message || "Internal server error" });
+  }
 });
 
 forgeRouter.delete("/forge/quality-control/:id", async (req: Request, res: Response) => {

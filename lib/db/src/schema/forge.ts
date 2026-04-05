@@ -2,6 +2,7 @@ import { pgTable, serial, varchar, integer, numeric, timestamp, text } from "dri
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { inventoryCatalogTable } from "./inventoryCatalog";
+import { inventoryLocationsTable } from "./inventoryLocations";
 
 export const forgeWorkstationsTable = pgTable("forge_workstations", {
   id: serial("id").primaryKey(),
@@ -69,6 +70,8 @@ export const forgeWorkOrdersTable = pgTable("forge_work_orders", {
   woNumber: varchar("wo_number", { length: 100 }).notNull(),
   productName: varchar("product_name", { length: 255 }).notNull(),
   bomId: integer("bom_id").references(() => forgeBOMTable.id),
+  productItemId: integer("product_item_id").references(() => inventoryCatalogTable.id),
+  productionLocationId: integer("production_location_id").references(() => inventoryLocationsTable.id),
   targetQty: integer("target_qty").notNull().default(1),
   producedQty: integer("produced_qty").notNull().default(0),
   scrapQty: integer("scrap_qty").notNull().default(0),

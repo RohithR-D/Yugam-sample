@@ -60,6 +60,12 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
   - Auto-creates 5 required COA accounts if missing (Inventory/Stock-in-Hand 1200, AP 2100, CGST/SGST/IGST Input 1130-1132)
   - Schema additions: received_at_location_id on goods_receipts, item_id+po_item_id on grn_items, tax breakdown+journal_entry_id+payment_due_days on purchase_invoices, item_id+location_id+tax amounts+journal_entry_id on purchase_returns, item_id on flex_po_items
   - All triggers wrapped in DB transactions; journal entries always balance (debits = credits); idempotent via referenceNumber or journalEntryId guards
+- **Production→Inventory Automation (Phase 6):** `artifacts/api-server/src/routes/productionAutomation.ts` — 3 automated triggers connecting Production (Forge) to Inventory (Vault):
+  - Trigger 1: Work Order Started (status→In Progress) → consumes BOM materials from inventory. Calculates required qty: (material.qty × targetQty / outputQty) × (1 + wastagePercent/100). Checks stock at production location, creates Outward stock_movements. If insufficient stock: rolls back WO to Draft and returns detailed shortage list (409 Conflict)
+  - Trigger 2: Work Order Completed (status→Completed) → adds finished goods (producedQty) to inventory via Inward stock_movement, updates stock_ledger + globalStock. If scrapQty > 0: logs separate Adjustment movement
+  - Trigger 3: QC Rejection (forge_quality_control POST with rejectedQty > 0) → creates Adjustment stock_movement with negative quantity, reduces stock_ledger + globalStock
+  - Schema additions: productItemId (FK→inventory_catalog) and productionLocationId (FK→inventory_locations) on forge_work_orders
+  - All triggers atomic (single transaction with FOR UPDATE locking), idempotent via referenceNumber guards on stock_movements
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 defines the API contract.
