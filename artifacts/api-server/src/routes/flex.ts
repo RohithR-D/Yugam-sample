@@ -13,6 +13,7 @@ import {
   purchaseReturnsTable, insertPurchaseReturnSchema,
 } from "@workspace/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
+import { triggerGrnAccepted, triggerInvoiceMatched, triggerPurchaseReturn } from "./procurementAutomation";
 
 const flexRouter = Router();
 
@@ -237,17 +238,40 @@ flexRouter.post("/flex/goods-receipts", async (req: Request, res: Response) => {
 });
 
 flexRouter.patch("/flex/goods-receipts/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const validStatuses = ["Pending", "Partial", "Complete"];
-  if (req.body.status && !validStatuses.includes(req.body.status)) { res.status(400).json({ error: "Invalid status" }); return; }
-  const updates: Record<string, any> = {};
-  if (req.body.status) updates.status = req.body.status;
-  if (req.body.notes !== undefined) updates.notes = req.body.notes;
-  if (req.body.receivedBy !== undefined) updates.receivedBy = req.body.receivedBy;
-  const [updated] = await db.update(goodsReceiptsTable).set(updates).where(eq(goodsReceiptsTable.id, id)).returning();
-  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+    const validStatuses = ["Pending", "Partial", "Complete"];
+    if (req.body.status && !validStatuses.includes(req.body.status)) { res.status(400).json({ error: "Invalid status" }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      const lockRows = await tx.execute(sql`SELECT id, status FROM goods_receipts WHERE id = ${id} FOR UPDATE`);
+      const prev = (lockRows as any).rows?.[0] || (lockRows as any)[0];
+      if (!prev) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+      const previousStatus = prev.status;
+
+      const updates: Record<string, any> = {};
+      if (req.body.status) updates.status = req.body.status;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.receivedBy !== undefined) updates.receivedBy = req.body.receivedBy;
+      if (req.body.receivedAtLocationId !== undefined) updates.receivedAtLocationId = req.body.receivedAtLocationId;
+      const [updated] = await tx.update(goodsReceiptsTable).set(updates).where(eq(goodsReceiptsTable.id, id)).returning();
+
+      const newStatus = updated.status;
+      let automationResult = null;
+      if (["Complete", "Partial"].includes(newStatus) && !["Complete", "Partial"].includes(previousStatus)) {
+        automationResult = await triggerGrnAccepted(id, tx as any);
+      }
+
+      return { ...updated, automationResult };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("GRN PATCH error:", err);
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || "Internal server error" });
+  }
 });
 
 flexRouter.get("/flex/purchase-invoices", async (_req: Request, res: Response) => {
@@ -263,15 +287,42 @@ flexRouter.post("/flex/purchase-invoices", async (req: Request, res: Response) =
 });
 
 flexRouter.patch("/flex/purchase-invoices/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const updates: Record<string, any> = {};
-  if (req.body.matchStatus) updates.matchStatus = req.body.matchStatus;
-  if (req.body.paymentStatus) updates.paymentStatus = req.body.paymentStatus;
-  if (req.body.notes !== undefined) updates.notes = req.body.notes;
-  const [updated] = await db.update(purchaseInvoicesTable).set(updates).where(eq(purchaseInvoicesTable.id, id)).returning();
-  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      const lockRows = await tx.execute(sql`SELECT id, match_status, journal_entry_id FROM purchase_invoices WHERE id = ${id} FOR UPDATE`);
+      const prev = (lockRows as any).rows?.[0] || (lockRows as any)[0];
+      if (!prev) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+      const previousMatchStatus = prev.match_status;
+
+      const updates: Record<string, any> = {};
+      if (req.body.matchStatus) updates.matchStatus = req.body.matchStatus;
+      if (req.body.paymentStatus) updates.paymentStatus = req.body.paymentStatus;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.taxableAmount !== undefined) updates.taxableAmount = req.body.taxableAmount;
+      if (req.body.cgstAmount !== undefined) updates.cgstAmount = req.body.cgstAmount;
+      if (req.body.sgstAmount !== undefined) updates.sgstAmount = req.body.sgstAmount;
+      if (req.body.igstAmount !== undefined) updates.igstAmount = req.body.igstAmount;
+      if (req.body.paymentDueDays !== undefined) updates.paymentDueDays = req.body.paymentDueDays;
+      const [updated] = await tx.update(purchaseInvoicesTable).set(updates).where(eq(purchaseInvoicesTable.id, id)).returning();
+
+      const newMatchStatus = updated.matchStatus;
+      let automationResult = null;
+      if (newMatchStatus === "Matched" && previousMatchStatus !== "Matched") {
+        automationResult = await triggerInvoiceMatched(id, tx as any);
+      }
+
+      return { ...updated, automationResult };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Purchase Invoice PATCH error:", err);
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || "Internal server error" });
+  }
 });
 
 flexRouter.get("/flex/purchase-returns", async (_req: Request, res: Response) => {
@@ -287,14 +338,42 @@ flexRouter.post("/flex/purchase-returns", async (req: Request, res: Response) =>
 });
 
 flexRouter.patch("/flex/purchase-returns/:id", async (req: Request, res: Response) => {
-  const id = parseInt(req.params.id);
-  if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
-  const updates: Record<string, any> = {};
-  if (req.body.status) updates.status = req.body.status;
-  if (req.body.notes !== undefined) updates.notes = req.body.notes;
-  const [updated] = await db.update(purchaseReturnsTable).set(updates).where(eq(purchaseReturnsTable.id, id)).returning();
-  if (!updated) { res.status(404).json({ error: "Not found" }); return; }
-  res.json(updated);
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) { res.status(400).json({ error: "Invalid id" }); return; }
+
+    const result = await db.transaction(async (tx) => {
+      const lockRows = await tx.execute(sql`SELECT id, status, journal_entry_id FROM purchase_returns WHERE id = ${id} FOR UPDATE`);
+      const prev = (lockRows as any).rows?.[0] || (lockRows as any)[0];
+      if (!prev) throw Object.assign(new Error("Not found"), { statusCode: 404 });
+      const previousStatus = prev.status;
+
+      const updates: Record<string, any> = {};
+      if (req.body.status) updates.status = req.body.status;
+      if (req.body.notes !== undefined) updates.notes = req.body.notes;
+      if (req.body.itemId !== undefined) updates.itemId = req.body.itemId;
+      if (req.body.locationId !== undefined) updates.locationId = req.body.locationId;
+      if (req.body.returnAmount !== undefined) updates.returnAmount = req.body.returnAmount;
+      if (req.body.cgstAmount !== undefined) updates.cgstAmount = req.body.cgstAmount;
+      if (req.body.sgstAmount !== undefined) updates.sgstAmount = req.body.sgstAmount;
+      if (req.body.igstAmount !== undefined) updates.igstAmount = req.body.igstAmount;
+      const [updated] = await tx.update(purchaseReturnsTable).set(updates).where(eq(purchaseReturnsTable.id, id)).returning();
+
+      const newStatus = updated.status;
+      let automationResult = null;
+      if (newStatus === "Sent" && previousStatus !== "Sent") {
+        automationResult = await triggerPurchaseReturn(id, tx as any);
+      }
+
+      return { ...updated, automationResult };
+    });
+
+    res.json(result);
+  } catch (err: any) {
+    console.error("Purchase Return PATCH error:", err);
+    const status = err.statusCode || 500;
+    res.status(status).json({ error: err.message || "Internal server error" });
+  }
 });
 
 export default flexRouter;

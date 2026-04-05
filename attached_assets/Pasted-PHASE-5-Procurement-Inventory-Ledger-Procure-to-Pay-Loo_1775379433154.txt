@@ -1,0 +1,50 @@
+PHASE 5: Procurement → Inventory → Ledger (Procure to Pay Loop)
+
+TRIGGER 1: GRN Accepted → Increase Stock
+When: goods_receipts.status changes to 'Accepted' or 'Completed'
+Do:
+  For each item in grn_items:
+  a) Look up the corresponding flex_po_items record to get itemId (you may need to add itemId FK to grn_items if not present)
+  b) Create stock_movements record:
+     - movementType = 'Inward'
+     - quantity = acceptedQty
+     - toLocationId = goods_receipts.receivedAtLocationId (add this column if missing — FK → inventory_locations)
+     - referenceNumber = grnNumber
+  c) Update stock_ledger and inventory_catalog.globalStock
+
+TRIGGER 2: Purchase Invoice Verified → Create AP + Journal Entry
+When: purchase_invoices.matchStatus changes to 'Matched' (meaning invoice matches GRN and PO)
+Do:
+  a) Create accounts_payable record:
+     - vendorName = vendorName
+     - billNumber = invoiceNumber
+     - billDate = current date (or add invoiceDate column to purchase_invoices)
+     - dueDate = billDate + vendor payment terms (add paymentDueDays to purchase_invoices if missing)
+     - amount = invoiceAmount
+     - paidAmount = 0
+     - status = 'Unpaid'
+     - entryType = 'Bill'
+  b) Create journal_entries + journal_lines:
+     - DEBIT: Inventory/Stock account (Asset) OR relevant Expense account for invoiceAmount excluding tax
+     - DEBIT: CGST Input Credit (Asset) for CGST amount
+     - DEBIT: SGST Input Credit (Asset) for SGST amount
+     - DEBIT: IGST Input Credit (Asset) for IGST amount
+     - CREDIT: Accounts Payable (Liability) for full invoiceAmount
+  c) Update chart_of_accounts balances
+  d) Update purchase_invoices.paymentStatus = 'Pending'
+
+TRIGGER 3: Purchase Return → Reverse Stock + Create Debit Note
+When: purchase_returns.status changes to 'Confirmed' or 'Sent'
+Do:
+  a) Create stock_movements: Outward movement for returned qty
+  b) Update stock_ledger and globalStock (decrease)
+  c) Create accounts_payable record with entryType = 'Debit Note' (reduces what you owe the vendor)
+  d) Create reversing journal entry
+
+MISSING COLUMNS TO ADD:
+- grn_items: Add itemId (FK → inventory_catalog.id)
+- goods_receipts: Add receivedAtLocationId (FK → inventory_locations.id)
+- purchase_invoices: Add invoiceDate, paymentDueDays, cgstAmount, sgstAmount, igstAmount columns
+- flex_purchase_orders: Add vendorGstin, placeOfSupply columns
+
+SAFETY: Same transaction + locking rules as Phase 4.

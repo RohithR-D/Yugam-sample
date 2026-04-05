@@ -1,6 +1,9 @@
 import { pgTable, serial, varchar, integer, numeric, timestamp, text } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { inventoryCatalogTable } from "./inventoryCatalog";
+import { inventoryLocationsTable } from "./inventoryLocations";
+import { journalEntriesTable } from "./ledger";
 
 export const materialRequestsTable = pgTable("material_requests", {
   id: serial("id").primaryKey(),
@@ -116,6 +119,7 @@ export const insertFlexPOSchema = createInsertSchema(flexPurchaseOrdersTable).om
 export const flexPOItemsTable = pgTable("flex_po_items", {
   id: serial("id").primaryKey(),
   poId: integer("po_id").notNull().references(() => flexPurchaseOrdersTable.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
   description: varchar("description", { length: 500 }).notNull(),
   hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
   qty: integer("qty").notNull().default(1),
@@ -135,6 +139,7 @@ export const goodsReceiptsTable = pgTable("goods_receipts", {
   vendorName: varchar("vendor_name", { length: 255 }).notNull().default(""),
   receivedDate: timestamp("received_date"),
   receivedBy: varchar("received_by", { length: 100 }).notNull().default(""),
+  receivedAtLocationId: integer("received_at_location_id").references(() => inventoryLocationsTable.id),
   notes: text("notes").notNull().default(""),
   status: varchar("status", { length: 30 }).notNull().default("Pending"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -151,6 +156,8 @@ export const insertGoodsReceiptSchema = createInsertSchema(goodsReceiptsTable).o
 export const grnItemsTable = pgTable("grn_items", {
   id: serial("id").primaryKey(),
   grnId: integer("grn_id").notNull().references(() => goodsReceiptsTable.id, { onDelete: "cascade" }),
+  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
+  poItemId: integer("po_item_id").references(() => flexPOItemsTable.id),
   description: varchar("description", { length: 500 }).notNull(),
   orderedQty: integer("ordered_qty").notNull().default(0),
   receivedQty: integer("received_qty").notNull().default(0),
@@ -167,11 +174,17 @@ export const purchaseInvoicesTable = pgTable("purchase_invoices", {
   poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
   grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
   invoiceDate: timestamp("invoice_date"),
+  paymentDueDays: integer("payment_due_days").notNull().default(30),
   invoiceAmount: numeric("invoice_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  taxableAmount: numeric("taxable_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  cgstAmount: numeric("cgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  sgstAmount: numeric("sgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  igstAmount: numeric("igst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
   poAmount: numeric("po_amount", { precision: 14, scale: 2 }).notNull().default("0"),
   grnAmount: numeric("grn_amount", { precision: 14, scale: 2 }).notNull().default("0"),
   matchStatus: varchar("match_status", { length: 30 }).notNull().default("Pending"),
   paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("Unpaid"),
+  journalEntryId: integer("journal_entry_id").references(() => journalEntriesTable.id),
   notes: text("notes").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow(),
 });
@@ -191,11 +204,18 @@ export const purchaseReturnsTable = pgTable("purchase_returns", {
   vendorName: varchar("vendor_name", { length: 255 }).notNull(),
   poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
   grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
+  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
+  locationId: integer("location_id").references(() => inventoryLocationsTable.id),
   itemName: varchar("item_name", { length: 255 }).notNull(),
   returnedQty: integer("returned_qty").notNull().default(0),
+  returnAmount: numeric("return_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  cgstAmount: numeric("cgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  sgstAmount: numeric("sgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
+  igstAmount: numeric("igst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
   reason: varchar("reason", { length: 30 }).notNull().default("Damage"),
   notes: text("notes").notNull().default(""),
   returnDate: timestamp("return_date"),
+  journalEntryId: integer("journal_entry_id").references(() => journalEntriesTable.id),
   status: varchar("status", { length: 30 }).notNull().default("Initiated"),
   createdAt: timestamp("created_at").defaultNow(),
 });

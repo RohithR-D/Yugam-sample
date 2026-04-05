@@ -53,6 +53,13 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
   - Trigger 3: Sales Return Goods Received (restock=true) → creates Inward stock_movements, increases stock_ledger + globalStock
   - Added dispatch_location_id (FK → inventory_locations) to delivery_challans table
   - All stock updates wrapped in transactions with row-level checks to prevent race conditions
+- **Procurement→Inventory→Ledger Automation (Phase 5):** `artifacts/api-server/src/routes/procurementAutomation.ts` — 3 automated triggers connecting Procurement (Flex) to Inventory (Vault) and Accounting (Ledger):
+  - Trigger 1: GRN Accepted (status→Complete/Partial) → creates Inward stock_movements, increases stock_ledger + inventory_catalog.globalStock for each accepted GRN item with itemId. Idempotent via referenceNumber guard on stock_movements
+  - Trigger 2: Purchase Invoice Matched (matchStatus→Matched) → creates journal entry (Inventory Dr, CGST/SGST/IGST Input Dr, Accounts Payable Cr), creates accounts_payable record with payment_due_days, links JE to invoice, sets paymentStatus to Approved
+  - Trigger 3: Purchase Return Confirmed/Sent → reverses stock (Outward movement, reduces globalStock + stock_ledger), creates debit note JE (AP Dr, Inventory + GST Input Cr), creates negative AP record (Debit Note). Blocks if insufficient stock
+  - Auto-creates 5 required COA accounts if missing (Inventory/Stock-in-Hand 1200, AP 2100, CGST/SGST/IGST Input 1130-1132)
+  - Schema additions: received_at_location_id on goods_receipts, item_id+po_item_id on grn_items, tax breakdown+journal_entry_id+payment_due_days on purchase_invoices, item_id+location_id+tax amounts+journal_entry_id on purchase_returns, item_id on flex_po_items
+  - All triggers wrapped in DB transactions; journal entries always balance (debits = credits); idempotent via referenceNumber or journalEntryId guards
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 defines the API contract.
