@@ -40,6 +40,13 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
 - **Sales Module (Phase 2):** 15 new tables in `lib/db/src/schema/sales.ts` — document_sequences, client_addresses, quotations/items, proforma_invoices/items, sales_orders/items, delivery_challans/items, sales_invoices/items, sales_returns/items, sales_payments. Old tables renamed to `legacy_*` prefix.
 - **Sales API routes:** `artifacts/api-server/src/routes/salesModule.ts` — full CRUD for all 6 document types + payments + client addresses. Auto-numbered documents with row-level locking (doc_sequences table). GST auto-switch: CGST+SGST when place_of_supply matches company state (27), IGST otherwise.
 - **Sales Frontend:** `SalesDashboard.tsx` — separate endpoints per doc type, GST auto-switch in line items, per-doc-type status options, Overview dashboard with 6 doc-type count tiles + metrics + charts.
+- **Sales→Ledger Automation (Phase 3):** `artifacts/api-server/src/routes/salesLedgerAutomation.ts` — 4 automated triggers connecting Sales to double-entry accounting:
+  - Trigger 1: Invoice Approved/Sent → creates journal entry (AR debit, Revenue + GST credits), creates accounts_receivable record, links JE to invoice
+  - Trigger 2: Payment Received → creates journal entry (Bank/TDS debit, AR credit), updates invoice payment status + AR record
+  - Trigger 3: Sales Return Credit Issued → creates reversing journal entry (Revenue + GST debits, AR credit), creates credit note AR, adjusts original invoice AR
+  - Trigger 4: Overdue Check → runs on overview load + dedicated endpoint, marks past-due AR/invoices as "Overdue"
+  - Auto-creates 8 required COA accounts if missing (Accounts Receivable, Sales Revenue, CGST/SGST/IGST Output, Bank Account, TDS Receivable, Bank Charges)
+  - All triggers wrapped in DB transactions for atomicity; journal entries always balance (debits = credits)
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 defines the API contract.

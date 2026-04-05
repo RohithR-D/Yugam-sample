@@ -20,6 +20,7 @@ import {
   clientsTable,
 } from "@workspace/db/schema";
 import { desc, eq, sql, and } from "drizzle-orm";
+import { triggerInvoiceApproved, triggerPaymentReceived, triggerReturnCreditIssued, triggerOverdueCheck } from "./salesLedgerAutomation";
 
 const r = Router();
 
@@ -63,8 +64,19 @@ function buildSalesOverview(
   };
 }
 
+r.get("/sales/overdue-check", async (_req: Request, res: Response) => {
+  try {
+    const result = await triggerOverdueCheck();
+    res.json(result);
+  } catch (err: any) {
+    console.error("Overdue check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 r.get("/sales/overview", async (_req: Request, res: Response) => {
   try {
+    triggerOverdueCheck().catch((e) => console.error("[AUTO:SALES] Background overdue check error:", e.message));
     const [quotations, proformas, orders, invoices, returns, payments] = await Promise.all([
       db.select().from(quotationsTable),
       db.select().from(proformaInvoicesTable),
@@ -424,6 +436,9 @@ r.post("/sales/invoices", async (req: Request, res: Response) => {
       const savedItems = await tx.select().from(salesInvoiceItemsTable).where(eq(salesInvoiceItemsTable.invoiceId, doc.id));
       return { ...doc, items: savedItems };
     });
+    if (result.status === "Approved" || result.status === "Sent") {
+      try { await triggerInvoiceApproved(result.id); } catch (e: any) { console.error("[AUTO:SALES] Invoice trigger error:", e.message); }
+    }
     res.status(201).json(result);
   } catch (err: any) {
     console.error("Invoice create error:", err);
@@ -454,6 +469,9 @@ r.patch("/sales/invoices/:id", async (req: Request, res: Response) => {
       const savedItems = await tx.select().from(salesInvoiceItemsTable).where(eq(salesInvoiceItemsTable.invoiceId, id));
       return { ...updated, items: savedItems };
     });
+    if (result.status === "Approved" || result.status === "Sent") {
+      try { await triggerInvoiceApproved(id); } catch (e: any) { console.error("[AUTO:SALES] Invoice trigger error:", e.message); }
+    }
     res.json(result);
   } catch (err: any) {
     if (err.message === "Not found") { res.status(404).json({ error: "Not found" }); return; }
@@ -519,6 +537,9 @@ r.post("/sales/returns", async (req: Request, res: Response) => {
       const savedItems = await tx.select().from(salesReturnItemsTable).where(eq(salesReturnItemsTable.returnId, doc.id));
       return { ...doc, items: savedItems };
     });
+    if (result.status === "Credit Issued") {
+      try { await triggerReturnCreditIssued(result.id); } catch (e) { console.error("[AUTO:SALES] Return credit trigger error:", e); }
+    }
     res.status(201).json(result);
   } catch (err: any) {
     console.error("Return create error:", err);
@@ -541,6 +562,9 @@ r.patch("/sales/returns/:id", async (req: Request, res: Response) => {
       const savedItems = await tx.select().from(salesReturnItemsTable).where(eq(salesReturnItemsTable.returnId, id));
       return { ...updated, items: savedItems };
     });
+    if (result.status === "Credit Issued") {
+      try { await triggerReturnCreditIssued(id); } catch (e: any) { console.error("[AUTO:SALES] Return trigger error:", e.message); }
+    }
     res.json(result);
   } catch (err: any) {
     if (err.message === "Not found") { res.status(404).json({ error: "Not found" }); return; }
@@ -569,32 +593,11 @@ r.post("/sales/payments", async (req: Request, res: Response) => {
     const paymentNumber = await getNextDocNumber("sales_payment");
     const parsed = insertSalesPaymentSchema.safeParse({ ...docData, paymentNumber, createdBy: (req as any).user?.userId || 1 });
     if (!parsed.success) { res.status(400).json({ error: "Invalid input", details: parsed.error.issues }); return; }
-    const result = await db.transaction(async (tx) => {
-      const [payment] = await tx.insert(salesPaymentsTable).values(parsed.data).returning();
-      if (payment.invoiceId) {
-        const invoicePayments = await tx.select().from(salesPaymentsTable).where(
-          and(eq(salesPaymentsTable.invoiceId, payment.invoiceId), eq(salesPaymentsTable.status, "Received"))
-        );
-        const totalPaid = invoicePayments.reduce((s, p) => s + parseFloat(p.amount || "0"), 0);
-        const [invoice] = await tx.select().from(salesInvoicesTable).where(eq(salesInvoicesTable.id, payment.invoiceId));
-        if (invoice) {
-          const grandTotal = parseFloat(invoice.grandTotal || "0");
-          const balanceDue = Math.max(0, grandTotal - totalPaid);
-          let paymentStatus = "Unpaid";
-          if (totalPaid >= grandTotal) paymentStatus = "Paid";
-          else if (totalPaid > 0) paymentStatus = "Partial";
-          await tx.update(salesInvoicesTable).set({
-            amountPaid: String(totalPaid),
-            balanceDue: String(balanceDue),
-            paymentStatus,
-            status: paymentStatus === "Paid" ? "Paid" : invoice.status,
-            updatedAt: new Date(),
-          }).where(eq(salesInvoicesTable.id, payment.invoiceId));
-        }
-      }
-      return payment;
-    });
-    res.status(201).json(result);
+    const [payment] = await db.insert(salesPaymentsTable).values(parsed.data).returning();
+    if (payment.status === "Received") {
+      try { await triggerPaymentReceived(payment.id); } catch (e: any) { console.error("[AUTO:SALES] Payment trigger error:", e.message); }
+    }
+    res.status(201).json(payment);
   } catch (err: any) {
     console.error("Payment create error:", err);
     res.status(500).json({ error: "Internal server error" });
