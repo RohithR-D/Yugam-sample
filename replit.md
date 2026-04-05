@@ -47,6 +47,12 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
   - Trigger 4: Overdue Check → runs on overview load + dedicated endpoint, marks past-due AR/invoices as "Overdue"
   - Auto-creates 8 required COA accounts if missing (Accounts Receivable, Sales Revenue, CGST/SGST/IGST Output, Bank Account, TDS Receivable, Bank Charges)
   - All triggers wrapped in DB transactions for atomicity; journal entries always balance (debits = credits)
+- **Sales→Inventory Automation (Phase 4):** `artifacts/api-server/src/routes/salesInventoryAutomation.ts` — 3 automated triggers connecting Sales to Inventory (Vault):
+  - Trigger 1: Delivery Challan Dispatched → creates Outward stock_movements, reduces stock_ledger + inventory_catalog.globalStock, logs low-stock warnings when below reorderLevel. Safety: verifies sufficient stock before dispatch, blocks with error if insufficient
+  - Trigger 2: Delivery Challan Dispatched → updates sales_order_items.deliveredQty, recalculates sales_orders.deliveryStatus (Pending/Partial/Delivered)
+  - Trigger 3: Sales Return Goods Received (restock=true) → creates Inward stock_movements, increases stock_ledger + globalStock
+  - Added dispatch_location_id (FK → inventory_locations) to delivery_challans table
+  - All stock updates wrapped in transactions with row-level checks to prevent race conditions
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 defines the API contract.

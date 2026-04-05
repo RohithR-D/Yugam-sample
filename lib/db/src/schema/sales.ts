@@ -311,6 +311,7 @@ export const deliveryChallansTable = pgTable("delivery_challans", {
   notes: text("notes"),
   receiverName: varchar("receiver_name", { length: 255 }),
   receivedDate: timestamp("received_date"),
+  dispatchLocationId: integer("dispatch_location_id").references(() => inventoryLocationsTable.id),
   status: varchar("status", { length: 20 }).notNull().default("Draft"),
   createdBy: integer("created_by").notNull().references(() => usersTable.id),
   createdAt: timestamp("created_at").defaultNow(),

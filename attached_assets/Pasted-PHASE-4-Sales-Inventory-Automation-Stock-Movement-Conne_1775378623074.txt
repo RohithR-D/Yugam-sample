@@ -1,0 +1,47 @@
+PHASE 4: Sales → Inventory Automation (Stock Movement)
+
+Connect Sales dispatch and returns to the Inventory (Vault) module.
+
+TRIGGER 1: Delivery Challan Dispatched → Reduce Stock
+When: delivery_challans.status changes to 'Dispatched'
+Do:
+  For each item in delivery_challan_items where item_id IS NOT NULL:
+  a) Create a stock_movements record:
+     - itemId = item_id
+     - movementType = 'Outward'
+     - quantity = dispatched_qty
+     - fromLocationId = the warehouse/location from which goods are dispatched (add dispatch_location_id to delivery_challans if not present)
+     - toLocationId = NULL (going to customer)
+     - referenceNumber = challan_number
+     - performedBy = created_by user name
+  b) Update stock_ledger: Decrease quantity for this itemId + locationId combination
+  c) Update inventory_catalog.globalStock: Decrease by dispatched_qty
+  d) If inventory_catalog.globalStock falls below reorderLevel, log a warning or create an alert/notification
+
+TRIGGER 2: Delivery Challan Dispatched → Update Sales Order
+When: Same trigger as above
+Do:
+  If source_sales_order_id is not null:
+  a) For each delivery_challan_item that has so_item_id:
+     - Update sales_order_items.delivered_qty += dispatched_qty
+  b) Recalculate sales_orders.delivery_status:
+     - If ALL items have delivered_qty >= quantity → 'Delivered'
+     - If ANY item has delivered_qty > 0 → 'Partial'
+     - Otherwise → 'Pending'
+
+TRIGGER 3: Sales Return Restocked → Increase Stock
+When: sales_returns.status changes to 'Goods Received' AND restock = TRUE
+Do:
+  For each item in sales_return_items where item_id IS NOT NULL:
+  a) Create a stock_movements record:
+     - movementType = 'Inward'
+     - quantity = returned_qty
+     - toLocationId = sales_returns.restock_location_id
+     - referenceNumber = return_number
+  b) Update stock_ledger: Increase quantity
+  c) Update inventory_catalog.globalStock: Increase by returned_qty
+
+SAFETY RULES:
+- Before creating Outward movement, verify stock_ledger has sufficient quantity. If not enough stock, BLOCK the dispatch and return an error: "Insufficient stock for {item_name}. Available: {qty}, Requested: {dispatched_qty}"
+- All stock updates must be wrapped in a transaction with row-level locking on stock_ledger to prevent race conditions
+- Add dispatch_location_id (FK → inventory_locations) to delivery_challans table if it doesn't exist

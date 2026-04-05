@@ -21,6 +21,7 @@ import {
 } from "@workspace/db/schema";
 import { desc, eq, sql, and } from "drizzle-orm";
 import { triggerInvoiceApproved, triggerPaymentReceived, triggerReturnCreditIssued, triggerOverdueCheck } from "./salesLedgerAutomation";
+import { triggerChallanDispatched, triggerReturnRestock } from "./salesInventoryAutomation";
 
 const r = Router();
 
@@ -385,18 +386,29 @@ r.patch("/sales/challans/:id", async (req: Request, res: Response) => {
   const { items, ...updateData } = req.body;
   try {
     const result = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(deliveryChallansTable).where(eq(deliveryChallansTable.id, id));
+      if (!existing) throw new Error("Not found");
+      const previousStatus = existing.status;
       const [updated] = await tx.update(deliveryChallansTable).set({ ...updateData, updatedAt: new Date() }).where(eq(deliveryChallansTable.id, id)).returning();
-      if (!updated) throw new Error("Not found");
       if (items && Array.isArray(items)) {
         await tx.delete(deliveryChallanItemsTable).where(eq(deliveryChallanItemsTable.challanId, id));
         if (items.length > 0) await tx.insert(deliveryChallanItemsTable).values(items.map((item: any, i: number) => ({ ...item, challanId: id, sortOrder: i })));
       }
       const savedItems = await tx.select().from(deliveryChallanItemsTable).where(eq(deliveryChallanItemsTable.challanId, id));
-      return { ...updated, items: savedItems };
+      let lowStockWarnings: string[] | undefined;
+      if (updated.status === "Dispatched" && previousStatus !== "Dispatched") {
+        const invResult = await triggerChallanDispatched(id, tx as any);
+        if (invResult?.lowStockWarnings?.length) {
+          lowStockWarnings = invResult.lowStockWarnings;
+        }
+      }
+      return { ...updated, items: savedItems, lowStockWarnings };
     });
     res.json(result);
   } catch (err: any) {
     if (err.message === "Not found") { res.status(404).json({ error: "Not found" }); return; }
+    if (err.message?.startsWith("Insufficient stock")) { res.status(400).json({ error: err.message }); return; }
+    console.error("Challan patch error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -513,6 +525,7 @@ r.post("/sales/returns", async (req: Request, res: Response) => {
         await tx.insert(salesReturnItemsTable).values(items.map((item: any, i: number) => ({
           returnId: doc.id,
           invoiceItemId: item.invoiceItemId || null,
+          itemId: item.itemId || null,
           description: item.description || "",
           hsnSac: item.hsnSac || "",
           itemType: item.itemType || "Product",
@@ -553,21 +566,27 @@ r.patch("/sales/returns/:id", async (req: Request, res: Response) => {
   const { items, ...updateData } = req.body;
   try {
     const result = await db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(salesReturnsTable).where(eq(salesReturnsTable.id, id));
+      if (!existing) throw new Error("Not found");
+      const previousStatus = existing.status;
       const [updated] = await tx.update(salesReturnsTable).set({ ...updateData, updatedAt: new Date() }).where(eq(salesReturnsTable.id, id)).returning();
-      if (!updated) throw new Error("Not found");
       if (items && Array.isArray(items)) {
         await tx.delete(salesReturnItemsTable).where(eq(salesReturnItemsTable.returnId, id));
         if (items.length > 0) await tx.insert(salesReturnItemsTable).values(items.map((item: any, i: number) => ({ ...item, returnId: id, sortOrder: i })));
       }
       const savedItems = await tx.select().from(salesReturnItemsTable).where(eq(salesReturnItemsTable.returnId, id));
+      if (updated.status === "Credit Issued" && previousStatus !== "Credit Issued") {
+        await triggerReturnCreditIssued(id);
+      }
+      if (updated.status === "Goods Received" && previousStatus !== "Goods Received" && updated.restock) {
+        await triggerReturnRestock(id, tx as any);
+      }
       return { ...updated, items: savedItems };
     });
-    if (result.status === "Credit Issued") {
-      try { await triggerReturnCreditIssued(id); } catch (e: any) { console.error("[AUTO:SALES] Return trigger error:", e.message); }
-    }
     res.json(result);
   } catch (err: any) {
     if (err.message === "Not found") { res.status(404).json({ error: "Not found" }); return; }
+    console.error("Return patch error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
