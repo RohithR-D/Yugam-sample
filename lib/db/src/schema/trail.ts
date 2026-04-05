@@ -28,7 +28,7 @@ export const insertTrailClaimSchema = createInsertSchema(trailClaimsTable).omit(
   ledgerJournalId: true,
 }).extend({
   date: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
-  category: z.enum(["Travel", "Fuel", "Meals", "Misc"]),
+  category: z.enum(["Travel", "Fuel", "Meals", "Misc", "Transport"]),
   claimType: z.enum(["Standard Receipt", "Mileage/Fuel Claim", "Per Diem"]),
   status: z.enum(["Pending", "Approved", "Rejected", "Paid"]).default("Pending"),
   distance: z.union([z.string(), z.number()]).optional().nullable(),

@@ -9,6 +9,7 @@ import {
   insertFleetExpenseSchema,
 } from "@workspace/db/schema";
 import { desc, eq, sql, gte, lte, and } from "drizzle-orm";
+import { onFleetExpenseCreated } from "./crossModuleAutomation";
 
 const fleetRouter = Router();
 
@@ -188,9 +189,21 @@ fleetRouter.post("/fleet/expenses", async (req: Request, res: Response) => {
     return;
   }
   try {
-    const [expense] = await db.insert(fleetExpensesTable).values(parsed.data).returning();
-    res.status(201).json(expense);
+    const result = await db.transaction(async (tx) => {
+      const [expense] = await tx.insert(fleetExpensesTable).values(parsed.data).returning();
+      let automation: any = null;
+
+      if (parsed.data.paidBy === "Employee") {
+        automation = await onFleetExpenseCreated(expense.id, tx);
+      }
+
+      const [freshExpense] = await tx.select().from(fleetExpensesTable).where(eq(fleetExpensesTable.id, expense.id));
+      return { ...freshExpense, _automation: automation };
+    });
+
+    res.status(201).json(result);
   } catch (err: any) {
+    console.error("[FLEET] Expense creation error:", err.message);
     res.status(500).json({ error: "Failed to log expense" });
   }
 });

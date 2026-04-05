@@ -66,6 +66,19 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
   - Trigger 3: QC Rejection (forge_quality_control POST with rejectedQty > 0) → creates Adjustment stock_movement with negative quantity, reduces stock_ledger + globalStock
   - Schema additions: productItemId (FK→inventory_catalog) and productionLocationId (FK→inventory_locations) on forge_work_orders
   - All triggers atomic (single transaction with FOR UPDATE locking), idempotent via referenceNumber guards on stock_movements
+- **Cross-Module Wiring (Phase 7):** `artifacts/api-server/src/routes/crossModuleAutomation.ts` — 3 automated trigger families connecting Fleet→Trail→Ledger, Payroll→Ledger, and Trail→Ledger:
+  - **Part A — Fleet→Trail→Ledger:**
+    - Trigger 1: Fleet expense created with paidBy='Employee' → auto-creates trail_claims record (category='Transport'), sets fleet_expenses.isClaimed=true, trailClaimId=claim.id, reimbursementStatus='Pending'
+    - Trigger 2: Trail claim approved (status→'Approved') → creates journal entry (Transport Expense Dr, Employee Reimbursement Payable Cr), updates linked fleet_expenses.reimbursementStatus='Reimbursed'
+  - **Part B — Payroll→Ledger:**
+    - Trigger: Payroll status→'Processed'/'Paid' → creates journal entry with 5 lines: Salary Expense Dr for grossPay, TDS Payable Cr, PF Payable Cr, ESI Payable Cr, Salary Payable Cr for netPay. Deductions split 40%/40%/20% across TDS/PF/ESI
+    - Schema addition: journalEntryId (FK→journal_entries) on payroll table; added 'Processed' to payroll status enum
+  - **Part C — Trail Claims→Ledger (standalone):**
+    - Trigger: Any trail_claims status→'Approved' AND no existing JE → creates journal entry (relevant Expense Dr, Employee Reimbursement Payable Cr), stores journalEntryId as integer FK
+    - Replaces previous inline JE logic which incorrectly stored string JE references
+  - Schema additions: paidBy, isClaimed (boolean), trailClaimId (FK→trail_claims), reimbursementStatus on fleet_expenses
+  - New COA accounts: Salary Expense (5100), Transport Expense (5300), TDS Payable (2300), PF Payable (2310), ESI Payable (2320), Salary Payable (2400), Employee Reimbursement Payable (2500)
+  - All triggers idempotent (journalEntryId/isClaimed guards prevent duplicates), atomic (wrapped in DB transactions)
 
 **API Specifications & Codegen (`@workspace/api-spec`, `@workspace/api-zod`, `@workspace/api-client-react`):**
 - OpenAPI 3.1 defines the API contract.

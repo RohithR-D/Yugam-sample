@@ -1,6 +1,7 @@
-import { pgTable, serial, integer, varchar, timestamp, numeric, text } from "drizzle-orm/pg-core";
+import { pgTable, serial, integer, varchar, timestamp, numeric, text, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { trailClaimsTable } from "./trail";
 
 export const fleetVehiclesTable = pgTable("fleet_vehicles", {
   id: serial("id").primaryKey(),
@@ -56,13 +57,21 @@ export const fleetExpensesTable = pgTable("fleet_expenses", {
   amount: numeric("amount", { precision: 12, scale: 2 }).notNull().default("0"),
   description: text("description").notNull().default(""),
   loggedBy: varchar("logged_by", { length: 200 }).notNull().default(""),
+  paidBy: varchar("paid_by", { length: 20 }).notNull().default("Company"),
+  isClaimed: boolean("is_claimed").notNull().default(false),
+  trailClaimId: integer("trail_claim_id").references(() => trailClaimsTable.id),
+  reimbursementStatus: varchar("reimbursement_status", { length: 30 }).notNull().default("Not Applicable"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertFleetExpenseSchema = createInsertSchema(fleetExpensesTable).omit({
   id: true,
   createdAt: true,
+  isClaimed: true,
+  trailClaimId: true,
+  reimbursementStatus: true,
 }).extend({
   expenseType: z.enum(["Fuel", "Repair", "Servicing"]),
   expenseDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  paidBy: z.enum(["Company", "Employee"]).default("Company"),
 });
