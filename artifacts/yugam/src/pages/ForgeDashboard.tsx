@@ -5,33 +5,51 @@ import {
   Search, Plus, X, Factory, ClipboardList, ListChecks, Shield, Calendar,
   LayoutDashboard, Trash2, CheckCircle, XCircle, AlertTriangle, Clock,
   ArrowRight, Zap, Target, TrendingUp, Wrench, Play, Pause, Settings,
-  ChevronRight, Eye, Package,
+  ChevronRight, Eye, Package, ArrowLeft, ChevronDown, ChevronUp, Edit,
+  BarChart3, FileText, Timer, Users, MapPin, DollarSign,
 } from "lucide-react";
 
 type ForgeSub = "Production Dashboard" | "Bill of Materials" | "Workstations & Routing" | "Work Orders" | "Quality Control" | "Downtime Logs";
 
-interface Workstation { id: number; name: string; type: string; costPerHour: string; status: string; description: string; createdAt: string | null; }
-interface BOM { id: number; productName: string; productCode: string; uom: string; outputQty: number; notes: string; createdAt: string | null; materials?: BOMMaterial[]; routing?: BOMRouting[]; }
+interface Workstation { id: number; name: string; type: string; costPerHour: string; status: string; description: string; locationId: number | null; capacity: number; currentStatus: string; maintenanceSchedule: string | null; lastMaintenanceDate: string | null; nextMaintenanceDate: string | null; createdAt: string | null; }
+interface BOM { id: number; productName: string; productCode: string; uom: string; outputQty: number; notes: string; productItemId: number | null; version: number; bomStatus: string; estimatedCostPerUnit: string; createdAt: string | null; materials?: BOMMaterial[]; routing?: BOMRouting[]; }
 interface BOMMaterial { id: number; bomId: number; itemName: string; itemId: number | null; qty: string; uom: string; wastagePercent: string; }
-interface BOMRouting { id: number; bomId: number; sequenceNo: number; workstationId: number; workstationName: string; operationName: string; estimatedMinutes: number; }
-interface WorkOrder { id: number; woNumber: string; productName: string; bomId: number | null; targetQty: number; producedQty: number; scrapQty: number; assignedWorkstationId: number | null; assignedWorkstationName: string; status: string; priority: string; startDate: string | null; endDate: string | null; notes: string; createdAt: string | null; }
-interface QCRecord { id: number; workOrderId: number; woNumber: string; productName: string; inspectedQty: number; passedQty: number; rejectedQty: number; rejectionReason: string; inspectedBy: string; inspectionDate: string | null; notes: string; createdAt: string | null; }
-interface DowntimeLog { id: number; workstationId: number; workstationName: string; reason: string; startTime: string; endTime: string | null; totalMinutesLost: number; notes: string; loggedBy: string; createdAt: string | null; }
-interface DashSummary { activeWorkOrders: number; todayYield: number; oee: number; scrapRate: number; workstations: { total: number; active: number; idle: number; maintenance: number }; }
-interface CatalogItem { id: number; name: string; sku: string; category: string; uom: string; unitPrice: string; }
+interface BOMRouting { id: number; bomId: number; sequenceNo: number; workstationId: number; workstationName: string; operationName: string; estimatedMinutes: number; sopReference: string | null; sopDescription: string | null; hasQcCheck: boolean; qcChecklistJson: string | null; consumableMaterials: string | null; setupTimeMinutes: number; }
+interface WorkOrder { id: number; woNumber: string; productName: string; bomId: number | null; productItemId: number | null; productionLocationId: number | null; targetQty: number; producedQty: number; scrapQty: number; assignedWorkstationId: number | null; assignedWorkstationName: string; status: string; priority: string; startDate: string | null; endDate: string | null; expectedEndDate: string | null; actualEndDate: string | null; notes: string; projectId: number | null; taskId: number | null; currentRoutingStep: number; totalRoutingSteps: number; materialsCost: string; laborCost: string; overheadCost: string; totalCost: string; costPerUnit: string; trackIndividualUnits: boolean; createdAt: string | null; }
+interface WOUnit { id: number; workOrderId: number; unitNumber: number; unitIdentifier: string; currentStepSequence: number; currentStepName: string | null; status: string; startedAt: string | null; completedAt: string | null; notes: string | null; }
+interface ProductionLogEntry { id: number; workOrderId: number; unitId: number; routingStepId: number; sequenceNo: number; workstationId: number | null; operatorName: string | null; status: string; startTime: string | null; endTime: string | null; actualMinutes: number | null; setupMinutes: number; qcRequired: boolean; qcStatus: string; qcRecordId: number | null; notes: string | null; }
+interface MaterialConsumption { id: number; workOrderId: number; itemId: number; itemName: string; bomEstimatedQty: string; actualQtyIssued: string; actualQtyConsumed: string; returnedQty: string; uom: string; unitCost: string; totalCost: string; variance: string; variancePercent: string; }
+interface QCRecord { id: number; workOrderId: number; woNumber: string; productName: string; inspectedQty: number; passedQty: number; rejectedQty: number; rejectionReason: string; inspectedBy: string; inspectionDate: string | null; notes: string; routingStepId: number | null; unitIdentifier: string | null; inspectionType: string; result: string; checklistResultsJson: string | null; reworkRequired: boolean; reworkInstructions: string | null; defectCategory: string | null; createdAt: string | null; }
+interface DowntimeLog { id: number; workstationId: number; workstationName: string; reason: string; startTime: string; endTime: string | null; totalMinutesLost: number; notes: string; loggedBy: string; workOrderId: number | null; costImpact: string; category: string; createdAt: string | null; }
+interface DashSummary { activeWorkOrders: number; todayYield: number; oee: number; scrapRate: number; totalMaterialsCost: number; totalLaborCost: number; totalProductionCost: number; workstations: { total: number; active: number; idle: number; maintenance: number; breakdown: number }; }
+interface CatalogItem { id: number; name: string; sku: string; uom: string; unitPrice: string; globalStock: number; }
+interface Location { id: number; name: string; }
+interface Project { id: number; projectName: string; }
+interface Task { id: number; title: string; }
 
 function fmtDate(d: string | null) { if (!d) return "—"; return new Date(d).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }); }
 function fmtTime(d: string | null) { if (!d) return "—"; return new Date(d).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }); }
+function fmtDateTime(d: string | null) { if (!d) return "—"; return `${fmtDate(d)} ${fmtTime(d)}`; }
+function fmtCurrency(v: string | number) { return `₹${Number(v || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`; }
 const inputCls = "w-full px-3.5 py-2.5 text-sm border border-gray-200 rounded-lg outline-none focus:border-[#E31E24] focus:ring-1 focus:ring-[#E31E24]/20 transition-colors";
+const selectCls = inputCls + " cursor-pointer";
 
 function StatusPill({ status }: { status: string }) {
   const s: Record<string, string> = {
-    Draft: "bg-gray-50 text-gray-500 border-gray-200", "In Progress": "bg-blue-50 text-blue-600 border-blue-200",
-    QC: "bg-purple-50 text-purple-600 border-purple-200", Completed: "bg-green-50 text-green-600 border-green-200",
+    Draft: "bg-gray-50 text-gray-500 border-gray-200", Planned: "bg-indigo-50 text-indigo-600 border-indigo-200",
+    "In Progress": "bg-blue-50 text-blue-600 border-blue-200", QC: "bg-purple-50 text-purple-600 border-purple-200",
+    Completed: "bg-green-50 text-green-600 border-green-200", "On Hold": "bg-amber-50 text-amber-600 border-amber-200",
+    Cancelled: "bg-gray-100 text-gray-400 border-gray-200",
     Active: "bg-green-50 text-green-600 border-green-200", Idle: "bg-amber-50 text-amber-600 border-amber-200",
-    Maintenance: "bg-red-50 text-red-500 border-red-200",
+    Maintenance: "bg-orange-50 text-orange-500 border-orange-200", Breakdown: "bg-red-50 text-red-500 border-red-200",
     Low: "bg-gray-50 text-gray-500 border-gray-200", Normal: "bg-blue-50 text-blue-600 border-blue-200",
     High: "bg-amber-50 text-amber-600 border-amber-200", Urgent: "bg-red-50 text-red-500 border-red-200",
+    Queued: "bg-gray-50 text-gray-500 border-gray-200", "QC Pending": "bg-purple-50 text-purple-600 border-purple-200",
+    "QC Passed": "bg-green-50 text-green-600 border-green-200", "QC Failed": "bg-red-50 text-red-500 border-red-200",
+    Rework: "bg-orange-50 text-orange-600 border-orange-200", Scrapped: "bg-red-100 text-red-700 border-red-300",
+    Obsolete: "bg-gray-100 text-gray-400 border-gray-200",
+    Passed: "bg-green-50 text-green-600 border-green-200", Failed: "bg-red-50 text-red-500 border-red-200",
+    Conditional: "bg-amber-50 text-amber-600 border-amber-200",
   };
   return <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${s[status] || "bg-gray-100 text-gray-600 border-gray-200"}`}>{status}</span>;
 }
@@ -46,15 +64,18 @@ export default function ForgeDashboard() {
   const [downtimeLogs, setDowntimeLogs] = useState<DowntimeLog[]>([]);
   const [dashSummary, setDashSummary] = useState<DashSummary | null>(null);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [wsR, bomR, woR, qcR, dtR, dsR, ciR] = await Promise.all([
+      const [wsR, bomR, woR, qcR, dtR, dsR, ciR, locR, prjR] = await Promise.all([
         authFetch("/api/forge/workstations"), authFetch("/api/forge/bom"),
         authFetch("/api/forge/work-orders"), authFetch("/api/forge/quality-control"),
         authFetch("/api/forge/downtime-logs"), authFetch("/api/forge/dashboard-summary"),
-        authFetch("/api/vault/catalog"),
+        authFetch("/api/forge/inventory-items"), authFetch("/api/forge/locations"),
+        authFetch("/api/forge/projects"),
       ]);
       if (wsR.ok) setWorkstations(await wsR.json());
       if (bomR.ok) setBoms(await bomR.json());
@@ -63,6 +84,8 @@ export default function ForgeDashboard() {
       if (dtR.ok) setDowntimeLogs(await dtR.json());
       if (dsR.ok) setDashSummary(await dsR.json());
       if (ciR.ok) setCatalogItems(await ciR.json());
+      if (locR.ok) setLocations(await locR.json());
+      if (prjR.ok) setProjects(await prjR.json());
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -73,10 +96,10 @@ export default function ForgeDashboard() {
   switch (sub) {
     case "Production Dashboard": return <ProductionDashboardView summary={dashSummary} workOrders={workOrders} workstations={workstations} />;
     case "Bill of Materials": return <BOMView boms={boms} catalogItems={catalogItems} workstations={workstations} onRefresh={fetchAll} />;
-    case "Workstations & Routing": return <WorkstationsView workstations={workstations} workOrders={workOrders} onRefresh={fetchAll} />;
-    case "Work Orders": return <WorkOrdersView workOrders={workOrders} workstations={workstations} boms={boms} onRefresh={fetchAll} />;
+    case "Workstations & Routing": return <WorkstationsView workstations={workstations} locations={locations} onRefresh={fetchAll} />;
+    case "Work Orders": return <WorkOrdersView workOrders={workOrders} workstations={workstations} boms={boms} catalogItems={catalogItems} locations={locations} projects={projects} onRefresh={fetchAll} />;
     case "Quality Control": return <QualityControlView qcRecords={qcRecords} workOrders={workOrders} onRefresh={fetchAll} />;
-    case "Downtime Logs": return <DowntimeLogsView downtimeLogs={downtimeLogs} workstations={workstations} onRefresh={fetchAll} />;
+    case "Downtime Logs": return <DowntimeLogsView downtimeLogs={downtimeLogs} workstations={workstations} workOrders={workOrders} onRefresh={fetchAll} />;
     default: return <ProductionDashboardView summary={dashSummary} workOrders={workOrders} workstations={workstations} />;
   }
 }
@@ -92,58 +115,53 @@ function ProductionDashboardView({ summary, workOrders, workstations }: { summar
         <MetricCard icon={TrendingUp} label="OEE" value={summary?.oee ?? 0} suffix="%" color="purple" />
         <MetricCard icon={AlertTriangle} label="Scrap Rate" value={summary?.scrapRate ?? 0} suffix="%" color="red" />
       </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="col-span-2 bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-bold text-gray-800 mb-4">Active Work Orders Timeline</h3>
-          {activeWOs.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">No active work orders</p> : (
-            <div className="space-y-2">
-              {activeWOs.map(wo => {
-                const progress = wo.targetQty > 0 ? Math.round((wo.producedQty / wo.targetQty) * 100) : 0;
-                return (
-                  <div key={wo.id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-mono text-gray-400">{wo.woNumber}</span>
-                        <StatusPill status={wo.status} />
-                        <StatusPill status={wo.priority} />
-                      </div>
-                      <p className="text-sm font-medium text-gray-800 mt-0.5">{wo.productName}</p>
-                      <p className="text-xs text-gray-400">{wo.assignedWorkstationName || "Unassigned"}</p>
-                    </div>
-                    <div className="w-[200px]">
-                      <div className="flex justify-between text-xs mb-1"><span className="text-gray-400">{wo.producedQty}/{wo.targetQty}</span><span className="font-semibold text-gray-600">{progress}%</span></div>
-                      <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-[#E31E24] rounded-full h-2 transition-all" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+      <div className="grid grid-cols-4 gap-4">
+        <MetricCard icon={DollarSign} label="Materials Cost" value={0} valueStr={fmtCurrency(summary?.totalMaterialsCost ?? 0)} color="blue" />
+        <MetricCard icon={Users} label="Labor Cost" value={0} valueStr={fmtCurrency(summary?.totalLaborCost ?? 0)} color="green" />
+        <MetricCard icon={BarChart3} label="Total Production Cost" value={0} valueStr={fmtCurrency(summary?.totalProductionCost ?? 0)} color="purple" />
         <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
-          <h3 className="text-sm font-bold text-gray-800 mb-4">Workstation Status</h3>
-          <div className="space-y-3 mb-4">
-            <div className="flex items-center justify-between"><span className="text-xs text-gray-400">Active</span><span className="text-sm font-bold text-green-600">{summary?.workstations.active ?? 0}</span></div>
-            <div className="flex items-center justify-between"><span className="text-xs text-gray-400">Idle</span><span className="text-sm font-bold text-amber-500">{summary?.workstations.idle ?? 0}</span></div>
-            <div className="flex items-center justify-between"><span className="text-xs text-gray-400">Maintenance</span><span className="text-sm font-bold text-red-500">{summary?.workstations.maintenance ?? 0}</span></div>
-          </div>
-          <div className="border-t border-gray-100 pt-3">
-            <p className="text-xs text-gray-400 mb-2">Recent Workstations</p>
-            {workstations.slice(0, 5).map(ws => (
-              <div key={ws.id} className="flex items-center justify-between py-1.5">
-                <span className="text-xs text-gray-600 truncate">{ws.name}</span>
-                <StatusPill status={ws.status} />
-              </div>
-            ))}
+          <p className="text-xs text-gray-400 mb-2">Workstation Status</p>
+          <div className="space-y-1.5">
+            <div className="flex justify-between"><span className="text-xs text-gray-500">Active</span><span className="text-sm font-bold text-green-600">{summary?.workstations.active ?? 0}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-500">Idle</span><span className="text-sm font-bold text-amber-500">{summary?.workstations.idle ?? 0}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-500">Maintenance</span><span className="text-sm font-bold text-orange-500">{summary?.workstations.maintenance ?? 0}</span></div>
+            <div className="flex justify-between"><span className="text-xs text-gray-500">Breakdown</span><span className="text-sm font-bold text-red-500">{summary?.workstations.breakdown ?? 0}</span></div>
           </div>
         </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+        <h3 className="text-sm font-bold text-gray-800 mb-4">Active Work Orders</h3>
+        {activeWOs.length === 0 ? <p className="text-sm text-gray-400 py-6 text-center">No active work orders</p> : (
+          <div className="space-y-2">
+            {activeWOs.map(wo => {
+              const progress = wo.targetQty > 0 ? Math.round((wo.producedQty / wo.targetQty) * 100) : 0;
+              return (
+                <div key={wo.id} className="flex items-center gap-4 p-3 rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-gray-400">{wo.woNumber}</span>
+                      <StatusPill status={wo.status} />
+                      <StatusPill status={wo.priority} />
+                    </div>
+                    <p className="text-sm font-medium text-gray-800 mt-0.5">{wo.productName}</p>
+                    <p className="text-xs text-gray-400">Step {wo.currentRoutingStep}/{wo.totalRoutingSteps} · {fmtCurrency(wo.totalCost)} cost</p>
+                  </div>
+                  <div className="w-[200px]">
+                    <div className="flex justify-between text-xs mb-1"><span className="text-gray-400">{wo.producedQty}/{wo.targetQty}</span><span className="font-semibold text-gray-600">{progress}%</span></div>
+                    <div className="w-full bg-gray-200 rounded-full h-2"><div className="bg-[#E31E24] rounded-full h-2 transition-all" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-function MetricCard({ icon: Icon, label, value, suffix, color }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; suffix?: string; color: string }) {
+function MetricCard({ icon: Icon, label, value, valueStr, suffix, color }: { icon: React.ComponentType<{ className?: string }>; label: string; value: number; valueStr?: string; suffix?: string; color: string }) {
   const colors: Record<string, { bg: string; icon: string; text: string }> = {
     blue: { bg: "bg-blue-50", icon: "text-blue-500", text: "text-blue-600" },
     green: { bg: "bg-green-50", icon: "text-green-500", text: "text-green-600" },
@@ -155,7 +173,7 @@ function MetricCard({ icon: Icon, label, value, suffix, color }: { icon: React.C
     <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
       <div className="flex items-center gap-3">
         <div className={`w-10 h-10 rounded-lg ${c.bg} flex items-center justify-center`}><Icon className={`w-5 h-5 ${c.icon}`} /></div>
-        <div><p className="text-xs text-gray-400">{label}</p><p className={`text-2xl font-bold ${c.text}`}>{value}{suffix || ""}</p></div>
+        <div><p className="text-xs text-gray-400">{label}</p><p className={`text-xl font-bold ${c.text}`}>{valueStr || `${value}${suffix || ""}`}</p></div>
       </div>
     </div>
   );
@@ -174,15 +192,23 @@ function BOMView({ boms, catalogItems, workstations, onRefresh }: { boms: BOM[];
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-gray-900">Bill of Materials (BOM)</h1><p className="text-sm text-gray-400 mt-0.5">Define material requirements and operational routing for products</p></div>
-        <button onClick={() => setShowBuilder(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Create BOM</button></div>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-gray-900">Bill of Materials (BOM)</h1><p className="text-sm text-gray-400 mt-0.5">Define material requirements and operational routing for products</p></div>
+        <button onClick={() => setShowBuilder(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Create BOM</button>
+      </div>
       <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm"><Search className="w-4 h-4 text-gray-400" /><input type="search" placeholder="Search BOMs..." value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent text-sm outline-none w-full placeholder:text-gray-400" /></div>
       {filtered.length === 0 ? <EmptyState icon={ClipboardList} text="No BOMs defined yet" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(bom => (
             <div key={bom.id} className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 hover:border-[#E31E24]/30 transition-colors group">
               <div className="flex items-start justify-between">
-                <div><p className="text-sm font-bold text-gray-800">{bom.productName}</p><p className="text-xs font-mono text-gray-400 mt-0.5">{bom.productCode || "No code"}</p></div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-gray-800">{bom.productName}</p>
+                    <StatusPill status={bom.bomStatus} />
+                  </div>
+                  <p className="text-xs font-mono text-gray-400 mt-0.5">{bom.productCode || "No code"} · v{bom.version}</p>
+                </div>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleView(bom.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50"><Eye className="w-3.5 h-3.5" /></button>
                   <button onClick={async () => { if (confirm("Delete this BOM?")) { await authFetch(`/api/forge/bom/${bom.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -190,6 +216,8 @@ function BOMView({ boms, catalogItems, workstations, onRefresh }: { boms: BOM[];
               </div>
               <div className="mt-3 flex items-center gap-3 text-xs text-gray-500">
                 <span>Output: {bom.outputQty} {bom.uom}</span>
+                <span>·</span>
+                <span>Est. Cost: {fmtCurrency(bom.estimatedCostPerUnit)}/{bom.uom}</span>
               </div>
             </div>
           ))}
@@ -205,10 +233,11 @@ function BOMDetailModal({ bom, onClose }: { bom: BOM; onClose: () => void }) {
   return (
     <Modal title={`BOM: ${bom.productName}`} icon={ClipboardList} onClose={onClose} wide>
       <div className="p-6 space-y-5">
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           <div><p className="text-xs text-gray-400">Product Code</p><p className="text-sm font-semibold text-gray-800">{bom.productCode || "—"}</p></div>
-          <div><p className="text-xs text-gray-400">Output Qty</p><p className="text-sm font-semibold text-gray-800">{bom.outputQty} {bom.uom}</p></div>
-          <div><p className="text-xs text-gray-400">Created</p><p className="text-sm font-semibold text-gray-800">{fmtDate(bom.createdAt)}</p></div>
+          <div><p className="text-xs text-gray-400">Version</p><p className="text-sm font-semibold text-gray-800">v{bom.version}</p></div>
+          <div><p className="text-xs text-gray-400">Status</p><StatusPill status={bom.bomStatus} /></div>
+          <div><p className="text-xs text-gray-400">Est. Cost/Unit</p><p className="text-sm font-semibold text-gray-800">{fmtCurrency(bom.estimatedCostPerUnit)}</p></div>
         </div>
         <div>
           <h3 className="text-sm font-bold text-gray-800 mb-2 flex items-center gap-2"><Package className="w-4 h-4 text-[#E31E24]" /> Material Requirements</h3>
@@ -228,8 +257,12 @@ function BOMDetailModal({ bom, onClose }: { bom: BOM; onClose: () => void }) {
                 <div key={r.id} className="flex items-center gap-3">
                   <div className="w-7 h-7 rounded-full bg-[#E31E24]/10 flex items-center justify-center text-xs font-bold text-[#E31E24]">{r.sequenceNo}</div>
                   <div className="flex-1 bg-gray-50 rounded-lg p-3">
-                    <p className="text-sm font-medium text-gray-800">{r.operationName || "Operation"}</p>
-                    <p className="text-xs text-gray-400">{r.workstationName} · {r.estimatedMinutes} min</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-800">{r.operationName || "Operation"}</p>
+                      {r.hasQcCheck && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 border border-purple-200 font-semibold">QC</span>}
+                    </div>
+                    <p className="text-xs text-gray-400">{r.workstationName} · {r.estimatedMinutes} min + {r.setupTimeMinutes} min setup</p>
+                    {r.sopReference && <p className="text-xs text-blue-500 mt-0.5">SOP: {r.sopReference}</p>}
                   </div>
                   {i < bom.routing!.length - 1 && <ArrowRight className="w-4 h-4 text-gray-300" />}
                 </div>
@@ -242,55 +275,82 @@ function BOMDetailModal({ bom, onClose }: { bom: BOM; onClose: () => void }) {
   );
 }
 
-interface MatLine { itemName: string; itemId: string; qty: string; uom: string; wastagePercent: string; }
-interface RouteLine { workstationId: string; workstationName: string; operationName: string; estimatedMinutes: string; }
+interface MatLine { itemName: string; itemId: string; qty: string; uom: string; wastagePercent: string; unitPrice: string; }
+interface RouteLine { workstationId: string; workstationName: string; operationName: string; estimatedMinutes: string; setupTimeMinutes: string; sopReference: string; hasQcCheck: boolean; qcChecklistJson: string; consumableMaterials: string; }
 
 function BOMBuilder({ catalogItems, workstations, onClose, onSaved }: { catalogItems: CatalogItem[]; workstations: Workstation[]; onClose: () => void; onSaved: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ productName: "", productCode: "", uom: "Nos", outputQty: "1", notes: "" });
-  const [materials, setMaterials] = useState<MatLine[]>([{ itemName: "", itemId: "", qty: "1", uom: "Nos", wastagePercent: "0" }]);
-  const [routing, setRouting] = useState<RouteLine[]>([{ workstationId: "", workstationName: "", operationName: "", estimatedMinutes: "0" }]);
+  const [form, setForm] = useState({ productName: "", productCode: "", uom: "Nos", outputQty: "1", notes: "", bomStatus: "Draft", productItemId: "" });
+  const [materials, setMaterials] = useState<MatLine[]>([{ itemName: "", itemId: "", qty: "1", uom: "Nos", wastagePercent: "0", unitPrice: "0" }]);
+  const [routing, setRouting] = useState<RouteLine[]>([{ workstationId: "", workstationName: "", operationName: "", estimatedMinutes: "0", setupTimeMinutes: "0", sopReference: "", hasQcCheck: false, qcChecklistJson: "", consumableMaterials: "" }]);
 
-  const addMat = () => setMaterials([...materials, { itemName: "", itemId: "", qty: "1", uom: "Nos", wastagePercent: "0" }]);
+  const addMat = () => setMaterials([...materials, { itemName: "", itemId: "", qty: "1", uom: "Nos", wastagePercent: "0", unitPrice: "0" }]);
   const removeMat = (i: number) => { if (materials.length > 1) setMaterials(materials.filter((_, idx) => idx !== i)); };
-  const updateMat = (i: number, f: string, v: string) => { const n = [...materials]; (n[i] as any)[f] = v; setMaterials(n); };
+  const updateMat = (i: number, f: string, v: any) => { const n = [...materials]; (n[i] as any)[f] = v; setMaterials(n); };
   const selectCatalogItem = (i: number, itemId: string) => {
     const item = catalogItems.find(c => c.id === parseInt(itemId));
-    if (item) { const n = [...materials]; n[i] = { ...n[i], itemId, itemName: item.name, uom: item.uom }; setMaterials(n); }
+    if (item) { const n = [...materials]; n[i] = { ...n[i], itemId, itemName: item.name, uom: item.uom, unitPrice: item.unitPrice }; setMaterials(n); }
   };
 
-  const addRoute = () => setRouting([...routing, { workstationId: "", workstationName: "", operationName: "", estimatedMinutes: "0" }]);
+  const addRoute = () => setRouting([...routing, { workstationId: "", workstationName: "", operationName: "", estimatedMinutes: "0", setupTimeMinutes: "0", sopReference: "", hasQcCheck: false, qcChecklistJson: "", consumableMaterials: "" }]);
   const removeRoute = (i: number) => { if (routing.length > 1) setRouting(routing.filter((_, idx) => idx !== i)); };
-  const updateRoute = (i: number, f: string, v: string) => { const n = [...routing]; (n[i] as any)[f] = v; setRouting(n); };
+  const updateRoute = (i: number, f: string, v: any) => { const n = [...routing]; (n[i] as any)[f] = v; setRouting(n); };
   const selectWorkstation = (i: number, wsId: string) => {
     const ws = workstations.find(w => w.id === parseInt(wsId));
     if (ws) { const n = [...routing]; n[i] = { ...n[i], workstationId: wsId, workstationName: ws.name }; setRouting(n); }
   };
 
+  const totalMaterialCost = materials.reduce((s, m) => {
+    const qty = parseFloat(m.qty) || 0; const wastage = parseFloat(m.wastagePercent) || 0;
+    const price = parseFloat(m.unitPrice) || 0;
+    return s + qty * (1 + wastage / 100) * price;
+  }, 0);
+
+  const totalLaborCost = routing.reduce((s, r) => {
+    const ws = workstations.find(w => w.id === parseInt(r.workstationId));
+    const hours = ((parseInt(r.estimatedMinutes) || 0) + (parseInt(r.setupTimeMinutes) || 0)) / 60;
+    return s + hours * parseFloat(ws?.costPerHour || "0");
+  }, 0);
+
   const handleSave = async () => {
     if (!form.productName.trim()) return; setSaving(true);
     const payload = {
       ...form, outputQty: parseInt(form.outputQty) || 1,
+      productItemId: form.productItemId ? parseInt(form.productItemId) : null,
       materials: materials.filter(m => m.itemName.trim()).map(m => ({ itemName: m.itemName, itemId: m.itemId ? parseInt(m.itemId) : null, qty: m.qty, uom: m.uom, wastagePercent: m.wastagePercent })),
-      routing: routing.filter(r => r.workstationId).map((r, i) => ({ sequenceNo: i + 1, workstationId: parseInt(r.workstationId), workstationName: r.workstationName, operationName: r.operationName, estimatedMinutes: parseInt(r.estimatedMinutes) || 0 })),
+      routing: routing.filter(r => r.workstationId).map((r, i) => ({
+        sequenceNo: i + 1, workstationId: parseInt(r.workstationId), workstationName: r.workstationName,
+        operationName: r.operationName, estimatedMinutes: parseInt(r.estimatedMinutes) || 0,
+        setupTimeMinutes: parseInt(r.setupTimeMinutes) || 0, sopReference: r.sopReference || null,
+        hasQcCheck: r.hasQcCheck, qcChecklistJson: r.qcChecklistJson || null,
+        consumableMaterials: r.consumableMaterials || null,
+      })),
     };
     try { const res = await authFetch("/api/forge/bom", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
   };
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-[2px]" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-[850px] max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-[900px] max-h-[92vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg bg-[#E31E24]/10 flex items-center justify-center"><ClipboardList className="w-4 h-4 text-[#E31E24]" /></div><h2 className="text-lg font-bold text-gray-900">BOM Builder</h2></div>
           <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"><X className="w-5 h-5" /></button>
         </div>
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-4 gap-4">
-            <div className="col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1.5">Product Name</label><input type="text" value={form.productName} onChange={e => setForm({ ...form, productName: e.target.value })} placeholder="e.g. Steel Frame Assembly" className={inputCls} /></div>
-            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Product Code</label><input type="text" value={form.productCode} onChange={e => setForm({ ...form, productCode: e.target.value })} placeholder="SFA-001" className={inputCls} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Output Qty</label><input type="number" value={form.outputQty} onChange={e => setForm({ ...form, outputQty: e.target.value })} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-              <div><label className="block text-xs font-medium text-gray-500 mb-1.5">UOM</label><input type="text" value={form.uom} onChange={e => setForm({ ...form, uom: e.target.value })} className={inputCls} /></div>
+            <div className="col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1.5">Product Name</label><input type="text" value={form.productName} onChange={e => setForm({ ...form, productName: e.target.value })} placeholder="e.g. Steel Column" className={inputCls} /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Product Code</label><input type="text" value={form.productCode} onChange={e => setForm({ ...form, productCode: e.target.value })} placeholder="COL-001" className={inputCls} /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Status</label>
+              <select value={form.bomStatus} onChange={e => setForm({ ...form, bomStatus: e.target.value })} className={selectCls}><option value="Draft">Draft</option><option value="Active">Active</option><option value="Obsolete">Obsolete</option></select></div>
+          </div>
+          <div className="grid grid-cols-4 gap-4">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Output Qty</label><input type="number" value={form.outputQty} onChange={e => setForm({ ...form, outputQty: e.target.value })} className={inputCls} /></div>
+            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">UOM</label><input type="text" value={form.uom} onChange={e => setForm({ ...form, uom: e.target.value })} className={inputCls} /></div>
+            <div className="col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1.5">Product (from Vault)</label>
+              <select value={form.productItemId} onChange={e => setForm({ ...form, productItemId: e.target.value })} className={selectCls}>
+                <option value="">Select finished product...</option>
+                {catalogItems.map(ci => <option key={ci.id} value={ci.id}>{ci.name} ({ci.sku})</option>)}
+              </select>
             </div>
           </div>
 
@@ -299,430 +359,894 @@ function BOMBuilder({ catalogItems, workstations, onClose, onSaved }: { catalogI
             <div className="border border-gray-200 rounded-xl overflow-hidden">
               <table className="w-full text-sm"><thead><tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-3 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase">Material (from Vault)</th>
-                <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-[100px]">Qty</th>
-                <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-[70px]">UOM</th>
-                <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-[80px]">Wastage %</th>
+                <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-[80px]">Qty</th>
+                <th className="px-2 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-[60px]">UOM</th>
+                <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-[70px]">Wastage%</th>
+                <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-[90px]">Unit Cost</th>
+                <th className="px-2 py-2.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-[90px]">Ext. Cost</th>
                 <th className="w-[36px]"></th>
               </tr></thead><tbody>
-                {materials.map((mat, i) => (
-                  <tr key={i} className="border-b border-gray-50">
-                    <td className="px-2 py-1.5">
-                      {catalogItems.length > 0 ? (
+                {materials.map((mat, i) => {
+                  const extCost = (parseFloat(mat.qty) || 0) * (1 + (parseFloat(mat.wastagePercent) || 0) / 100) * (parseFloat(mat.unitPrice) || 0);
+                  return (
+                    <tr key={i} className="border-b border-gray-50">
+                      <td className="px-2 py-1.5">
                         <select value={mat.itemId} onChange={e => selectCatalogItem(i, e.target.value)} className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] cursor-pointer">
                           <option value="">Select from Vault...</option>
                           {catalogItems.map(ci => <option key={ci.id} value={ci.id}>{ci.name} ({ci.sku})</option>)}
                         </select>
-                      ) : <input type="text" value={mat.itemName} onChange={e => updateMat(i, "itemName", e.target.value)} placeholder="Material name" className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24]" />}
-                    </td>
-                    <td className="px-1 py-1.5"><input type="number" value={mat.qty} onChange={e => updateMat(i, "qty", e.target.value)} className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" /></td>
-                    <td className="px-1 py-1.5"><input type="text" value={mat.uom} onChange={e => updateMat(i, "uom", e.target.value)} className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded outline-none focus:border-[#E31E24]" /></td>
-                    <td className="px-1 py-1.5"><input type="number" value={mat.wastagePercent} onChange={e => updateMat(i, "wastagePercent", e.target.value)} className="w-full px-2 py-1.5 text-sm text-right border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" /></td>
-                    <td className="px-1 py-1.5">{materials.length > 1 && <button onClick={() => removeMat(i)} className="p-1 rounded text-gray-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>}</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-1 py-1.5"><input type="number" value={mat.qty} onChange={e => updateMat(i, "qty", e.target.value)} className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" /></td>
+                      <td className="px-1 py-1.5"><input type="text" value={mat.uom} readOnly className="w-full px-2 py-1.5 text-xs border border-gray-100 rounded bg-gray-50 text-gray-500" /></td>
+                      <td className="px-1 py-1.5"><input type="number" value={mat.wastagePercent} onChange={e => updateMat(i, "wastagePercent", e.target.value)} className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] text-right [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" /></td>
+                      <td className="px-2 py-1.5 text-right text-xs text-gray-500">{fmtCurrency(mat.unitPrice)}</td>
+                      <td className="px-2 py-1.5 text-right text-xs font-semibold text-gray-700">{fmtCurrency(extCost)}</td>
+                      <td><button onClick={() => removeMat(i)} className="p-1 text-gray-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button></td>
+                    </tr>
+                  );
+                })}
               </tbody></table>
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-2"><h3 className="text-sm font-bold text-gray-800 flex items-center gap-2"><Factory className="w-4 h-4 text-[#E31E24]" /> Operational Routing</h3><button onClick={addRoute} className="text-xs text-[#E31E24] font-semibold hover:underline">+ Add Step</button></div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {routing.map((r, i) => (
-                <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg p-3">
-                  <div className="w-7 h-7 rounded-full bg-[#E31E24]/10 flex items-center justify-center text-xs font-bold text-[#E31E24] shrink-0">{i + 1}</div>
-                  <select value={r.workstationId} onChange={e => selectWorkstation(i, e.target.value)} className="flex-1 px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] cursor-pointer bg-white">
-                    <option value="">Select Workstation...</option>
-                    {workstations.map(ws => <option key={ws.id} value={ws.id}>{ws.name} ({ws.type})</option>)}
-                  </select>
-                  <input type="text" value={r.operationName} onChange={e => updateRoute(i, "operationName", e.target.value)} placeholder="Operation name" className="w-[180px] px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24]" />
-                  <div className="flex items-center gap-1 w-[100px]"><input type="number" value={r.estimatedMinutes} onChange={e => updateRoute(i, "estimatedMinutes", e.target.value)} className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" /><span className="text-xs text-gray-400 shrink-0">min</span></div>
-                  {routing.length > 1 && <button onClick={() => removeRoute(i)} className="p-1 rounded text-gray-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>}
+                <div key={i} className="border border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-7 h-7 rounded-full bg-[#E31E24]/10 flex items-center justify-center text-xs font-bold text-[#E31E24]">{i + 1}</div>
+                    <div className="flex-1 grid grid-cols-4 gap-2">
+                      <select value={r.workstationId} onChange={e => selectWorkstation(i, e.target.value)} className="px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] cursor-pointer">
+                        <option value="">Workstation...</option>
+                        {workstations.map(ws => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+                      </select>
+                      <input type="text" value={r.operationName} onChange={e => updateRoute(i, "operationName", e.target.value)} placeholder="Operation name" className="px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24]" />
+                      <input type="number" value={r.estimatedMinutes} onChange={e => updateRoute(i, "estimatedMinutes", e.target.value)} placeholder="Est. min" className="px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                      <input type="number" value={r.setupTimeMinutes} onChange={e => updateRoute(i, "setupTimeMinutes", e.target.value)} placeholder="Setup min" className="px-2 py-1.5 text-sm border border-gray-200 rounded outline-none focus:border-[#E31E24] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none" />
+                    </div>
+                    <button onClick={() => removeRoute(i)} className="p-1 text-gray-300 hover:text-red-500"><X className="w-3.5 h-3.5" /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 ml-10">
+                    <input type="text" value={r.sopReference} onChange={e => updateRoute(i, "sopReference", e.target.value)} placeholder="SOP Ref (e.g. SOP-WEL-001)" className="px-2 py-1.5 text-xs border border-gray-200 rounded outline-none focus:border-[#E31E24]" />
+                    <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                      <input type="checkbox" checked={r.hasQcCheck} onChange={e => updateRoute(i, "hasQcCheck", e.target.checked)} className="w-3.5 h-3.5 rounded border-gray-300 text-[#E31E24] focus:ring-[#E31E24]" />
+                      QC Required at this step
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="grid grid-cols-3 gap-4">
+              <div><p className="text-xs text-gray-400">Total Material Cost</p><p className="text-sm font-bold text-gray-800">{fmtCurrency(totalMaterialCost)}</p></div>
+              <div><p className="text-xs text-gray-400">Total Labor Cost</p><p className="text-sm font-bold text-gray-800">{fmtCurrency(totalLaborCost)}</p></div>
+              <div><p className="text-xs text-gray-400">Estimated Cost/Unit</p><p className="text-sm font-bold text-[#E31E24]">{fmtCurrency((totalMaterialCost + totalLaborCost) / (parseInt(form.outputQty) || 1))}</p></div>
+            </div>
+          </div>
+
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Notes</label><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className={inputCls} /></div>
         </div>
-        <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-          <button onClick={handleSave} disabled={saving || !form.productName.trim()} className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50"><Plus className="w-4 h-4" /> Save BOM</button>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100">
+          <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+          <button onClick={handleSave} disabled={saving || !form.productName.trim()} className="px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] disabled:opacity-40 shadow-lg shadow-red-500/15">{saving ? "Saving..." : "Save BOM"}</button>
         </div>
       </div>
     </div>
   );
 }
 
-function WorkstationsView({ workstations, workOrders, onRefresh }: { workstations: Workstation[]; workOrders: WorkOrder[]; onRefresh: () => void }) {
-  const [showModal, setShowModal] = useState(false);
-  const getAssignedWO = (wsId: number) => workOrders.find(wo => wo.assignedWorkstationId === wsId && (wo.status === "In Progress" || wo.status === "QC"));
-  const getUtilization = (wsId: number) => { const assigned = workOrders.filter(wo => wo.assignedWorkstationId === wsId && wo.status !== "Draft"); return assigned.length > 0 ? Math.min(100, assigned.length * 25) : 0; };
-
-  const handleStatusChange = async (id: number, status: string) => {
-    await authFetch(`/api/forge/workstations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
-    onRefresh();
-  };
-
-  const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = { Active: Play, Idle: Pause, Maintenance: Wrench };
-
+function WorkstationsView({ workstations, locations, onRefresh }: { workstations: Workstation[]; locations: Location[]; onRefresh: () => void }) {
+  const [showAdd, setShowAdd] = useState(false);
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-gray-900">Workstations & Routing</h1><p className="text-sm text-gray-400 mt-0.5">Manage production centres, machines, and manual lines</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Add Workstation</button></div>
-      {workstations.length === 0 ? <EmptyState icon={Factory} text="No workstations defined" /> : (
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-gray-900">Workstations & Routing</h1><p className="text-sm text-gray-400 mt-0.5">Manage production centers</p></div>
+        <button onClick={() => setShowAdd(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15"><Plus className="w-4 h-4" /> Add Workstation</button>
+      </div>
+      {workstations.length === 0 ? <EmptyState icon={Settings} text="No workstations configured" /> : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workstations.map(ws => {
-            const assignedWO = getAssignedWO(ws.id);
-            const utilization = getUtilization(ws.id);
-            const StIcon = statusIcons[ws.status] || Settings;
-            return (
-              <div key={ws.id} className={`bg-white border rounded-xl shadow-sm p-5 transition-colors ${ws.status === "Active" ? "border-green-200" : ws.status === "Maintenance" ? "border-red-200" : "border-gray-100"}`}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${ws.status === "Active" ? "bg-green-50" : ws.status === "Maintenance" ? "bg-red-50" : "bg-amber-50"}`}>
-                      <StIcon className={`w-4 h-4 ${ws.status === "Active" ? "text-green-500" : ws.status === "Maintenance" ? "text-red-500" : "text-amber-500"}`} />
-                    </div>
-                    <div><p className="text-sm font-bold text-gray-800">{ws.name}</p><p className="text-[10px] text-gray-400">{ws.type}</p></div>
-                  </div>
-                  <StatusPill status={ws.status} />
-                </div>
-                <div className="space-y-2 mb-3">
-                  <div className="flex justify-between text-xs"><span className="text-gray-400">Cost/Hour</span><span className="font-semibold text-gray-700">₹ {parseFloat(ws.costPerHour).toLocaleString("en-IN")}</span></div>
-                  <div className="flex justify-between text-xs"><span className="text-gray-400">Utilization</span><span className="font-semibold text-gray-700">{utilization}%</span></div>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5"><div className={`rounded-full h-1.5 transition-all ${utilization > 75 ? "bg-green-500" : utilization > 40 ? "bg-amber-500" : "bg-gray-400"}`} style={{ width: `${utilization}%` }} /></div>
-                </div>
-                {assignedWO ? (
-                  <div className="bg-blue-50 rounded-lg p-2.5 mb-3"><p className="text-[10px] text-blue-400 uppercase font-semibold">Current Work Order</p><p className="text-xs font-medium text-blue-700">{assignedWO.woNumber}: {assignedWO.productName}</p></div>
-                ) : (
-                  <div className="bg-gray-50 rounded-lg p-2.5 mb-3"><p className="text-xs text-gray-400">No active work order</p></div>
-                )}
-                <div className="flex items-center gap-1.5">
-                  {ws.status !== "Active" && <button onClick={() => handleStatusChange(ws.id, "Active")} className="flex-1 px-2 py-1.5 text-[10px] font-semibold text-green-600 border border-green-200 rounded-lg hover:bg-green-50">Activate</button>}
-                  {ws.status !== "Idle" && <button onClick={() => handleStatusChange(ws.id, "Idle")} className="flex-1 px-2 py-1.5 text-[10px] font-semibold text-amber-600 border border-amber-200 rounded-lg hover:bg-amber-50">Set Idle</button>}
-                  {ws.status !== "Maintenance" && <button onClick={() => handleStatusChange(ws.id, "Maintenance")} className="flex-1 px-2 py-1.5 text-[10px] font-semibold text-red-500 border border-red-200 rounded-lg hover:bg-red-50">Maintenance</button>}
-                  <button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/workstations/${ws.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50"><Trash2 className="w-3.5 h-3.5" /></button>
+          {workstations.map(ws => (
+            <div key={ws.id} className="bg-white border border-gray-100 rounded-xl shadow-sm p-5 group hover:border-[#E31E24]/30 transition-colors">
+              <div className="flex items-start justify-between">
+                <div><p className="text-sm font-bold text-gray-800">{ws.name}</p><p className="text-xs text-gray-400 mt-0.5">{ws.type} · {fmtCurrency(ws.costPerHour)}/hr</p></div>
+                <div className="flex items-center gap-2">
+                  <StatusPill status={ws.currentStatus} />
+                  <button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/workstations/${ws.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button>
                 </div>
               </div>
-            );
-          })}
+              <div className="mt-3 text-xs text-gray-500 space-y-1">
+                {ws.description && <p>{ws.description}</p>}
+                <p>Capacity: {ws.capacity} job(s) · {ws.maintenanceSchedule || "No maintenance schedule"}</p>
+                {ws.nextMaintenanceDate && <p className="text-amber-600">Next maintenance: {fmtDate(ws.nextMaintenanceDate)}</p>}
+              </div>
+            </div>
+          ))}
         </div>
       )}
-      {showModal && <AddWorkstationModal onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); onRefresh(); }} />}
+      {showAdd && <AddWorkstationModal locations={locations} onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); onRefresh(); }} />}
     </div>
   );
 }
 
-function AddWorkstationModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function AddWorkstationModal({ locations, onClose, onSaved }: { locations: Location[]; onClose: () => void; onSaved: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ name: "", type: "Machine", costPerHour: "", description: "" });
+  const [form, setForm] = useState({ name: "", type: "Machine", costPerHour: "0", description: "", locationId: "", capacity: "1", maintenanceSchedule: "", lastMaintenanceDate: "", nextMaintenanceDate: "" });
+
   const handleSave = async () => {
     if (!form.name.trim()) return; setSaving(true);
-    try { const res = await authFetch("/api/forge/workstations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
+    const payload = { ...form, costPerHour: form.costPerHour, capacity: parseInt(form.capacity) || 1, locationId: form.locationId ? parseInt(form.locationId) : null, lastMaintenanceDate: form.lastMaintenanceDate || null, nextMaintenanceDate: form.nextMaintenanceDate || null };
+    try { const res = await authFetch("/api/forge/workstations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
   };
+
   return (
-    <Modal title="Add Workstation" icon={Factory} onClose={onClose}>
+    <Modal title="Add Workstation" icon={Settings} onClose={onClose}>
       <div className="p-6 space-y-4">
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Workstation Name</label><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="e.g. CNC Machine Bay 1" className={inputCls} /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Type</label><select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className={inputCls + " cursor-pointer"}><option value="Machine">Machine</option><option value="Manual Line">Manual Line</option><option value="Vendor">Vendor</option><option value="QC Desk">QC Desk</option></select></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Cost Per Hour (₹)</label><input type="number" value={form.costPerHour} onChange={e => setForm({ ...form, costPerHour: e.target.value })} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Workstation Name</label><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Type</label><select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })} className={selectCls}><option>Machine</option><option>Manual Line</option><option>Vendor</option><option>QC Desk</option></select></div>
         </div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label><textarea rows={2} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} className={inputCls + " resize-none"} /></div>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Cost/Hour (₹)</label><input type="number" value={form.costPerHour} onChange={e => setForm({ ...form, costPerHour: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Capacity</label><input type="number" value={form.capacity} onChange={e => setForm({ ...form, capacity: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Location</label><select value={form.locationId} onChange={e => setForm({ ...form, locationId: e.target.value })} className={selectCls}><option value="">Select location...</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></div>
+        </div>
+        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Description</label><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} className={inputCls} /></div>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Maintenance Schedule</label><input value={form.maintenanceSchedule} onChange={e => setForm({ ...form, maintenanceSchedule: e.target.value })} placeholder="e.g. Every 500 hours" className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Last Maintenance</label><input type="date" value={form.lastMaintenanceDate} onChange={e => setForm({ ...form, lastMaintenanceDate: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Next Maintenance</label><input type="date" value={form.nextMaintenanceDate} onChange={e => setForm({ ...form, nextMaintenanceDate: e.target.value })} className={inputCls} /></div>
+        </div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} disabled={!form.name.trim()} label="Add Workstation" />
+      <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+        <button onClick={handleSave} disabled={saving || !form.name.trim()} className="px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] disabled:opacity-40">{saving ? "Saving..." : "Add Workstation"}</button>
+      </div>
     </Modal>
   );
 }
 
-function WorkOrdersView({ workOrders, workstations, boms, onRefresh }: { workOrders: WorkOrder[]; workstations: Workstation[]; boms: BOM[]; onRefresh: () => void }) {
-  const [showModal, setShowModal] = useState(false);
-  const [completeWO, setCompleteWO] = useState<WorkOrder | null>(null);
-  const [search, setSearch] = useState("");
-  const filtered = useMemo(() => { if (!search.trim()) return workOrders; const q = search.toLowerCase(); return workOrders.filter(w => w.woNumber.toLowerCase().includes(q) || w.productName.toLowerCase().includes(q)); }, [workOrders, search]);
+function WorkOrdersView({ workOrders, workstations, boms, catalogItems, locations, projects, onRefresh }: { workOrders: WorkOrder[]; workstations: Workstation[]; boms: BOM[]; catalogItems: CatalogItem[]; locations: Location[]; projects: Project[]; onRefresh: () => void }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [detailWO, setDetailWO] = useState<number | null>(null);
+  const columns = ["Draft", "In Progress", "QC", "Completed"] as const;
 
-  const getStatusColor = (s: string) => ({ Draft: "border-gray-200 bg-gray-50", "In Progress": "border-blue-200 bg-blue-50", QC: "border-purple-200 bg-purple-50", Completed: "border-green-200 bg-green-50" }[s] || "border-gray-200 bg-gray-50");
+  if (detailWO) return <WorkOrderDetail woId={detailWO} onBack={() => { setDetailWO(null); onRefresh(); }} />;
 
-  const handleStatusChange = async (wo: WorkOrder, newStatus: string) => {
-    if (newStatus === "Completed") { setCompleteWO(wo); return; }
-    await authFetch(`/api/forge/work-orders/${wo.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: newStatus }) });
-    onRefresh();
+  const handleStatusChange = async (id: number, status: string) => {
+    try {
+      const res = await authFetch(`/api/forge/work-orders/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      if (!res.ok) { const err = await res.json(); alert(err.error || "Failed"); }
+      onRefresh();
+    } catch {}
   };
-
-  const statusColumns = ["Draft", "In Progress", "QC", "Completed"];
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-gray-900">Work Orders</h1><p className="text-sm text-gray-400 mt-0.5">Track production jobs across workstations</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Create Work Order</button></div>
-      <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5 shadow-sm"><Search className="w-4 h-4 text-gray-400" /><input type="search" placeholder="Search work orders..." value={search} onChange={e => setSearch(e.target.value)} className="bg-transparent text-sm outline-none w-full placeholder:text-gray-400" /></div>
-
-      <div className="grid grid-cols-4 gap-3">
-        {statusColumns.map(status => {
-          const wos = filtered.filter(w => w.status === status);
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-gray-900">Work Orders</h1><p className="text-sm text-gray-400 mt-0.5">Production job tracking</p></div>
+        <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15"><Plus className="w-4 h-4" /> Create Work Order</button>
+      </div>
+      <div className="grid grid-cols-4 gap-4">
+        {columns.map(col => {
+          const items = workOrders.filter(wo => wo.status === col);
           return (
-            <div key={status} className="space-y-2">
-              <div className={`px-3 py-2 rounded-lg border ${getStatusColor(status)}`}>
-                <div className="flex items-center justify-between"><span className="text-xs font-bold text-gray-700 uppercase">{status}</span><span className="text-xs text-gray-400">{wos.length}</span></div>
+            <div key={col} className="bg-white border border-gray-100 rounded-xl shadow-sm">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="text-xs font-bold text-gray-600 uppercase">{col}</h3>
+                <span className="text-xs font-mono text-gray-400">{items.length}</span>
               </div>
-              {wos.length === 0 ? <p className="text-center text-xs text-gray-300 py-6">No orders</p> : wos.map(wo => (
-                <div key={wo.id} className="bg-white border border-gray-100 rounded-xl p-4 shadow-sm group hover:border-[#E31E24]/30 transition-colors">
-                  <div className="flex items-center justify-between mb-1"><span className="text-xs font-mono text-gray-400">{wo.woNumber}</span><StatusPill status={wo.priority} /></div>
-                  <p className="text-sm font-medium text-gray-800">{wo.productName}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{wo.assignedWorkstationName || "Unassigned"}</p>
-                  <div className="mt-2 flex items-center justify-between text-xs"><span className="text-gray-400">Target</span><span className="font-semibold text-gray-700">{wo.producedQty}/{wo.targetQty}</span></div>
-                  {wo.targetQty > 0 && <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1"><div className="bg-[#E31E24] rounded-full h-1.5" style={{ width: `${Math.min(100, Math.round((wo.producedQty / wo.targetQty) * 100))}%` }} /></div>}
-                  <div className="flex gap-1 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {status === "Draft" && <button onClick={() => handleStatusChange(wo, "In Progress")} className="flex-1 px-2 py-1 text-[10px] font-semibold text-blue-600 border border-blue-200 rounded hover:bg-blue-50">Start</button>}
-                    {status === "In Progress" && <button onClick={() => handleStatusChange(wo, "QC")} className="flex-1 px-2 py-1 text-[10px] font-semibold text-purple-600 border border-purple-200 rounded hover:bg-purple-50">Send to QC</button>}
-                    {status === "QC" && <button onClick={() => handleStatusChange(wo, "Completed")} className="flex-1 px-2 py-1 text-[10px] font-semibold text-green-600 border border-green-200 rounded hover:bg-green-50">Complete</button>}
-                    <button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/work-orders/${wo.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1 rounded text-gray-300 hover:text-red-500"><Trash2 className="w-3 h-3" /></button>
-                  </div>
-                </div>
-              ))}
+              <div className="p-3 space-y-2 min-h-[200px] max-h-[65vh] overflow-y-auto">
+                {items.map(wo => {
+                  const progress = wo.targetQty > 0 ? Math.round((wo.producedQty / wo.targetQty) * 100) : 0;
+                  return (
+                    <div key={wo.id} className="bg-gray-50 rounded-lg p-3 hover:bg-gray-100 transition-colors cursor-pointer group" onClick={() => setDetailWO(wo.id)}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-mono text-gray-400">{wo.woNumber}</span>
+                        <StatusPill status={wo.priority} />
+                      </div>
+                      <p className="text-sm font-medium text-gray-800 leading-tight">{wo.productName}</p>
+                      <div className="mt-2">
+                        <div className="flex justify-between text-[10px] mb-0.5"><span className="text-gray-400">{wo.producedQty}/{wo.targetQty}</span><span className="font-semibold text-gray-600">{progress}%</span></div>
+                        <div className="w-full bg-gray-200 rounded-full h-1.5"><div className="bg-[#E31E24] rounded-full h-1.5" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
+                      </div>
+                      <div className="mt-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                        {col === "Draft" && <button onClick={() => handleStatusChange(wo.id, "In Progress")} className="text-[10px] px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold">Start</button>}
+                        {col === "In Progress" && <button onClick={() => handleStatusChange(wo.id, "QC")} className="text-[10px] px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 font-semibold">Send to QC</button>}
+                        {col === "QC" && <button onClick={() => handleStatusChange(wo.id, "Completed")} className="text-[10px] px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 font-semibold">Complete</button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })}
       </div>
-      {showModal && <CreateWorkOrderModal workstations={workstations} boms={boms} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); onRefresh(); }} />}
-      {completeWO && <CompleteWOModal wo={completeWO} onClose={() => setCompleteWO(null)} onSaved={() => { setCompleteWO(null); onRefresh(); }} />}
+      {showCreate && <CreateWorkOrderModal boms={boms} locations={locations} projects={projects} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); onRefresh(); }} />}
     </div>
   );
 }
 
-function CreateWorkOrderModal({ workstations, boms, onClose, onSaved }: { workstations: Workstation[]; boms: BOM[]; onClose: () => void; onSaved: () => void }) {
+function CreateWorkOrderModal({ boms, locations, projects, onClose, onSaved }: { boms: BOM[]; locations: Location[]; projects: Project[]; onClose: () => void; onSaved: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ woNumber: `WO-${Date.now().toString().slice(-6)}`, productName: "", bomId: "", targetQty: "1", assignedWorkstationId: "", assignedWorkstationName: "", priority: "Normal", startDate: new Date().toISOString().split("T")[0], notes: "" });
-  const handleSelectBOM = (bomId: string) => { const bom = boms.find(b => b.id === parseInt(bomId)); setForm({ ...form, bomId, productName: bom?.productName || form.productName }); };
-  const handleSelectWS = (wsId: string) => { const ws = workstations.find(w => w.id === parseInt(wsId)); setForm({ ...form, assignedWorkstationId: wsId, assignedWorkstationName: ws?.name || "" }); };
-  const handleSave = async () => {
-    if (!form.productName.trim()) return; setSaving(true);
-    try { const res = await authFetch("/api/forge/work-orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, targetQty: parseInt(form.targetQty) || 1, bomId: form.bomId ? parseInt(form.bomId) : null, assignedWorkstationId: form.assignedWorkstationId ? parseInt(form.assignedWorkstationId) : null, startDate: form.startDate || undefined }) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
+  const [form, setForm] = useState({ bomId: "", targetQty: "1", priority: "Normal", startDate: new Date().toISOString().split("T")[0], notes: "", productionLocationId: "", projectId: "", taskId: "", trackIndividualUnits: true });
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [selectedBom, setSelectedBom] = useState<BOM | null>(null);
+  const [routing, setRouting] = useState<BOMRouting[]>([]);
+  const [bomMaterials, setBomMaterials] = useState<BOMMaterial[]>([]);
+
+  const activeBoms = boms.filter(b => b.bomStatus === "Active");
+
+  const handleBomChange = async (bomId: string) => {
+    setForm({ ...form, bomId });
+    if (bomId) {
+      const res = await authFetch(`/api/forge/bom/${bomId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSelectedBom(data);
+        setRouting(data.routing || []);
+        setBomMaterials(data.materials || []);
+      }
+    } else {
+      setSelectedBom(null); setRouting([]); setBomMaterials([]);
+    }
   };
+
+  const handleProjectChange = async (projectId: string) => {
+    setForm({ ...form, projectId, taskId: "" });
+    if (projectId) {
+      const res = await authFetch(`/api/forge/projects/${projectId}/tasks`);
+      if (res.ok) setTasks(await res.json());
+    } else { setTasks([]); }
+  };
+
+  const handleSave = async () => {
+    if (!form.bomId) { alert("BOM is required"); return; }
+    setSaving(true);
+    const woNumber = `WO-${Date.now().toString(36).toUpperCase()}`;
+    const payload = {
+      woNumber, bomId: parseInt(form.bomId), targetQty: parseInt(form.targetQty) || 1,
+      priority: form.priority, startDate: form.startDate, notes: form.notes,
+      productionLocationId: form.productionLocationId ? parseInt(form.productionLocationId) : null,
+      projectId: form.projectId ? parseInt(form.projectId) : null,
+      taskId: form.taskId ? parseInt(form.taskId) : null,
+      productName: selectedBom?.productName || "",
+      trackIndividualUnits: form.trackIndividualUnits,
+    };
+    try {
+      const res = await authFetch("/api/forge/work-orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      if (res.ok) onSaved(); else { const err = await res.json(); alert(err.error || "Failed"); }
+    } catch {} finally { setSaving(false); }
+  };
+
+  const targetQty = parseInt(form.targetQty) || 1;
+
   return (
-    <Modal title="Create Work Order" icon={ListChecks} onClose={onClose}>
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">WO Number</label><input type="text" value={form.woNumber} onChange={e => setForm({ ...form, woNumber: e.target.value })} className={inputCls} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Priority</label><select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className={inputCls + " cursor-pointer"}><option value="Low">Low</option><option value="Normal">Normal</option><option value="High">High</option><option value="Urgent">Urgent</option></select></div>
+    <Modal title="Create Work Order" icon={ClipboardList} onClose={onClose} wide>
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2"><label className="block text-xs font-medium text-gray-500 mb-1.5">Link to BOM (Required)</label>
+            <select value={form.bomId} onChange={e => handleBomChange(e.target.value)} className={selectCls}>
+              <option value="">Select Active BOM...</option>
+              {activeBoms.map(b => <option key={b.id} value={b.id}>{b.productName} ({b.productCode}) v{b.version}</option>)}
+            </select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Target Qty</label><input type="number" value={form.targetQty} onChange={e => setForm({ ...form, targetQty: e.target.value })} className={inputCls} /></div>
         </div>
-        {boms.length > 0 && <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Link to BOM (optional)</label><select value={form.bomId} onChange={e => handleSelectBOM(e.target.value)} className={inputCls + " cursor-pointer"}><option value="">Manual entry...</option>{boms.map(b => <option key={b.id} value={b.id}>{b.productName} ({b.productCode})</option>)}</select></div>}
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Product Name</label><input type="text" value={form.productName} onChange={e => setForm({ ...form, productName: e.target.value })} className={inputCls} /></div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Target Quantity</label><input type="number" value={form.targetQty} onChange={e => setForm({ ...form, targetQty: e.target.value })} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
+
+        {selectedBom && <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
+          Product: <strong>{selectedBom.productName}</strong> · {routing.length} routing steps · Est. cost: {fmtCurrency(selectedBom.estimatedCostPerUnit)}/unit
+        </div>}
+
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Priority</label><select value={form.priority} onChange={e => setForm({ ...form, priority: e.target.value })} className={selectCls}><option>Low</option><option>Normal</option><option>High</option><option>Urgent</option></select></div>
           <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Start Date</label><input type="date" value={form.startDate} onChange={e => setForm({ ...form, startDate: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Production Location</label><select value={form.productionLocationId} onChange={e => setForm({ ...form, productionLocationId: e.target.value })} className={selectCls}><option value="">Select...</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></div>
         </div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Assign Workstation</label><select value={form.assignedWorkstationId} onChange={e => handleSelectWS(e.target.value)} className={inputCls + " cursor-pointer"}><option value="">Unassigned</option>{workstations.filter(ws => ws.status === "Active").map(ws => <option key={ws.id} value={ws.id}>{ws.name} ({ws.type})</option>)}</select></div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Notes</label><textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={inputCls + " resize-none"} /></div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Project (Optional)</label><select value={form.projectId} onChange={e => handleProjectChange(e.target.value)} className={selectCls}><option value="">None</option>{projects.map(p => <option key={p.id} value={p.id}>{p.projectName}</option>)}</select></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Task</label><select value={form.taskId} onChange={e => setForm({ ...form, taskId: e.target.value })} className={selectCls} disabled={!form.projectId}><option value="">None</option>{tasks.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}</select></div>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+          <input type="checkbox" checked={form.trackIndividualUnits} onChange={e => setForm({ ...form, trackIndividualUnits: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#E31E24] focus:ring-[#E31E24]" />
+          Track individual units (e.g. Column #1, #2, #3...)
+        </label>
+
+        {routing.length > 0 && (
+          <div>
+            <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase">Routing Steps Preview</h4>
+            <DataTable headers={["#", "Workstation", "Operation", "Est. Time", "QC"]}>
+              {routing.map(r => (
+                <tr key={r.id} className="border-b border-gray-50">
+                  <td className="px-4 py-2 text-sm font-bold text-[#E31E24]">{r.sequenceNo}</td>
+                  <td className="px-4 py-2 text-sm text-gray-800">{r.workstationName}</td>
+                  <td className="px-4 py-2 text-sm text-gray-600">{r.operationName}</td>
+                  <td className="px-4 py-2 text-sm text-gray-600">{r.estimatedMinutes + r.setupTimeMinutes} min</td>
+                  <td className="px-4 py-2">{r.hasQcCheck ? <CheckCircle className="w-4 h-4 text-purple-500" /> : <span className="text-gray-300">—</span>}</td>
+                </tr>
+              ))}
+            </DataTable>
+          </div>
+        )}
+
+        {bomMaterials.length > 0 && (
+          <div>
+            <h4 className="text-xs font-bold text-gray-600 mb-2 uppercase">Material Requirements</h4>
+            <DataTable headers={["Material", "BOM Qty/Unit", "Total Required", "Stock"]}>
+              {bomMaterials.map(m => {
+                const qty = parseFloat(m.qty) || 0;
+                const wastage = parseFloat(m.wastagePercent) || 0;
+                const totalReq = qty * targetQty * (1 + wastage / 100);
+                return (
+                  <tr key={m.id} className="border-b border-gray-50">
+                    <td className="px-4 py-2 text-sm text-gray-800">{m.itemName}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600">{m.qty} {m.uom}</td>
+                    <td className="px-4 py-2 text-sm font-bold text-gray-800">{totalReq.toFixed(1)} {m.uom}</td>
+                    <td className="px-4 py-2 text-sm text-gray-500">—</td>
+                  </tr>
+                );
+              })}
+            </DataTable>
+          </div>
+        )}
+
+        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Notes</label><textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2} className={inputCls} /></div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} disabled={!form.productName.trim()} label="Create WO" />
+      <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+        <button onClick={handleSave} disabled={saving || !form.bomId} className="px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] disabled:opacity-40">{saving ? "Creating..." : "Create Work Order"}</button>
+      </div>
     </Modal>
   );
 }
 
-function CompleteWOModal({ wo, onClose, onSaved }: { wo: WorkOrder; onClose: () => void; onSaved: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const [producedQty, setProducedQty] = useState(wo.producedQty.toString() || wo.targetQty.toString());
-  const [scrapQty, setScrapQty] = useState(wo.scrapQty.toString() || "0");
-  const handleSave = async () => {
-    setSaving(true);
-    try { await authFetch(`/api/forge/work-orders/${wo.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Completed", producedQty: parseInt(producedQty) || 0, scrapQty: parseInt(scrapQty) || 0, endDate: new Date().toISOString() }) }); onSaved(); } catch {} finally { setSaving(false); }
-  };
+function WorkOrderDetail({ woId, onBack }: { woId: number; onBack: () => void }) {
+  const [wo, setWo] = useState<any>(null);
+  const [tab, setTab] = useState("overview");
+  const [loading, setLoading] = useState(true);
+
+  const fetchDetail = useCallback(async () => {
+    const res = await authFetch(`/api/forge/work-orders/${woId}`);
+    if (res.ok) setWo(await res.json());
+    setLoading(false);
+  }, [woId]);
+
+  useEffect(() => { fetchDetail(); }, [fetchDetail]);
+
+  if (loading) return <div className="text-center py-16 text-gray-400">Loading work order...</div>;
+  if (!wo) return <div className="text-center py-16 text-gray-400">Work order not found</div>;
+
+  const progress = wo.targetQty > 0 ? Math.round((wo.producedQty / wo.targetQty) * 100) : 0;
+  const tabs = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "units", label: "Unit Tracker", icon: ListChecks },
+    { key: "log", label: "Production Log", icon: FileText },
+    { key: "materials", label: "Material Consumption", icon: Package },
+    { key: "qc", label: "QC Records", icon: Shield },
+    { key: "downtime", label: "Downtime", icon: AlertTriangle },
+  ];
+
   return (
-    <Modal title="Complete Work Order" icon={CheckCircle} onClose={onClose}>
-      <div className="p-6 space-y-4">
-        <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-xs text-gray-400">Work Order</p>
-          <p className="text-sm font-bold text-gray-800">{wo.woNumber}: {wo.productName}</p>
-          <p className="text-xs text-gray-500 mt-1">Target: {wo.targetQty} units</p>
+    <div className="space-y-5">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"><ArrowLeft className="w-5 h-5" /></button>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">{wo.woNumber}</h1>
+            <StatusPill status={wo.status} />
+            <StatusPill status={wo.priority} />
+          </div>
+          <p className="text-sm text-gray-400">{wo.productName}</p>
         </div>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Finished Good Yield</label><input type="number" value={producedQty} onChange={e => setProducedQty(e.target.value)} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Scrap / Waste Qty</label><input type="number" value={scrapQty} onChange={e => setScrapQty(e.target.value)} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
+        <div className="text-right">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-400">{wo.producedQty}/{wo.targetQty} units</span>
+            <span className="font-bold text-gray-800">{progress}%</span>
+          </div>
+          <div className="w-[200px] bg-gray-200 rounded-full h-2 mt-1"><div className="bg-[#E31E24] rounded-full h-2" style={{ width: `${Math.min(progress, 100)}%` }} /></div>
         </div>
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2"><AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" /><p className="text-xs text-amber-700">This will mark the work order as Completed. Ensure the yield and scrap quantities are accurate.</p></div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} disabled={false} label="Mark Completed" />
-    </Modal>
+
+      <div className="flex gap-1 border-b border-gray-200">
+        {tabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)} className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${tab === t.key ? "border-[#E31E24] text-[#E31E24]" : "border-transparent text-gray-500 hover:text-gray-700"}`}>
+            <t.icon className="w-4 h-4" />{t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "overview" && <WOOverviewTab wo={wo} />}
+      {tab === "units" && <WOUnitsTab wo={wo} onRefresh={fetchDetail} />}
+      {tab === "log" && <WOProductionLogTab wo={wo} />}
+      {tab === "materials" && <WOMaterialsTab wo={wo} />}
+      {tab === "qc" && <WOQcTab wo={wo} />}
+      {tab === "downtime" && <WODowntimeTab wo={wo} />}
+    </div>
+  );
+}
+
+function WOOverviewTab({ wo }: { wo: any }) {
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-4 gap-4">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+          <p className="text-xs text-gray-400">Start Date</p><p className="text-sm font-semibold text-gray-800">{fmtDate(wo.startDate)}</p></div>
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+          <p className="text-xs text-gray-400">Expected End</p><p className="text-sm font-semibold text-gray-800">{fmtDate(wo.expectedEndDate)}</p></div>
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+          <p className="text-xs text-gray-400">Actual End</p><p className="text-sm font-semibold text-gray-800">{fmtDate(wo.actualEndDate)}</p></div>
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-4">
+          <p className="text-xs text-gray-400">Routing Progress</p><p className="text-sm font-semibold text-gray-800">Step {wo.currentRoutingStep}/{wo.totalRoutingSteps}</p></div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">Cost Summary</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Materials Cost</span><span className="text-sm font-bold text-gray-800">{fmtCurrency(wo.materialsCost)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Labor Cost</span><span className="text-sm font-bold text-gray-800">{fmtCurrency(wo.laborCost)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Overhead Cost</span><span className="text-sm font-bold text-gray-800">{fmtCurrency(wo.overheadCost)}</span></div>
+            <div className="flex justify-between border-t border-gray-200 pt-2"><span className="text-sm font-bold text-gray-800">Total Cost</span><span className="text-sm font-bold text-[#E31E24]">{fmtCurrency(wo.totalCost)}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Cost Per Unit</span><span className="text-sm font-semibold text-gray-800">{fmtCurrency(wo.costPerUnit)}</span></div>
+          </div>
+        </div>
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">Production Summary</h3>
+          <div className="space-y-2">
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Target Qty</span><span className="text-sm font-bold text-gray-800">{wo.targetQty}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Produced Qty</span><span className="text-sm font-bold text-green-600">{wo.producedQty}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Scrap Qty</span><span className="text-sm font-bold text-red-500">{wo.scrapQty}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-gray-500">Units Tracked</span><span className="text-sm font-semibold text-gray-800">{wo.trackIndividualUnits ? "Yes" : "No (Batch)"}</span></div>
+          </div>
+        </div>
+      </div>
+      {wo.routing && wo.routing.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm p-5">
+          <h3 className="text-sm font-bold text-gray-800 mb-3">Routing Steps</h3>
+          <div className="flex items-center gap-2 flex-wrap">
+            {wo.routing.map((r: any, i: number) => (
+              <div key={r.id} className="flex items-center gap-2">
+                <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${wo.currentRoutingStep >= r.sequenceNo ? "bg-green-50 text-green-700 border border-green-200" : "bg-gray-50 text-gray-500 border border-gray-200"}`}>
+                  {r.sequenceNo}. {r.operationName}
+                </div>
+                {i < wo.routing.length - 1 && <ArrowRight className="w-3 h-3 text-gray-300" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WOUnitsTab({ wo, onRefresh }: { wo: any; onRefresh: () => void }) {
+  const units: WOUnit[] = wo.units || [];
+
+  const handleAdvance = async (unitId: number) => {
+    const res = await authFetch(`/api/forge/units/${unitId}/advance`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+    if (res.ok) onRefresh(); else { const err = await res.json(); alert(err.error || "Failed"); }
+  };
+
+  const handleScrap = async (unitId: number) => {
+    if (!confirm("Mark this unit as scrapped?")) return;
+    const res = await authFetch(`/api/forge/units/${unitId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "Scrapped" }) });
+    if (res.ok) onRefresh();
+  };
+
+  if (units.length === 0) return <EmptyState icon={ListChecks} text="No individual units tracked for this work order" />;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <DataTable headers={["Unit", "Current Step", "Status", "Started", "Completed", "Actions"]}>
+        {units.map(u => (
+          <tr key={u.id} className="border-b border-gray-50 hover:bg-gray-50/50">
+            <td className="px-4 py-3 text-sm font-medium text-gray-800">{u.unitIdentifier}</td>
+            <td className="px-4 py-3 text-sm text-gray-600">{u.currentStepName || (u.currentStepSequence === 0 ? "Not started" : `Step ${u.currentStepSequence}`)}</td>
+            <td className="px-4 py-3"><StatusPill status={u.status} /></td>
+            <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(u.startedAt)}</td>
+            <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(u.completedAt)}</td>
+            <td className="px-4 py-3">
+              <div className="flex gap-1">
+                {["Queued", "In Progress", "QC Passed"].includes(u.status) && (
+                  <button onClick={() => handleAdvance(u.id)} className="text-[10px] px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold">
+                    {u.currentStepSequence === 0 ? "Start" : "Next Step"}
+                  </button>
+                )}
+                {!["Completed", "Scrapped"].includes(u.status) && (
+                  <button onClick={() => handleScrap(u.id)} className="text-[10px] px-2 py-1 rounded bg-red-50 text-red-500 hover:bg-red-100 font-semibold">Scrap</button>
+                )}
+              </div>
+            </td>
+          </tr>
+        ))}
+      </DataTable>
+    </div>
+  );
+}
+
+function WOProductionLogTab({ wo }: { wo: any }) {
+  const logs: ProductionLogEntry[] = wo.productionLog || [];
+  const units: WOUnit[] = wo.units || [];
+
+  if (logs.length === 0) return <EmptyState icon={FileText} text="No production log entries yet" />;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <DataTable headers={["Time", "Unit", "Step", "Operator", "Duration", "QC"]}>
+        {logs.map(l => {
+          const unit = units.find(u => u.id === l.unitId);
+          const routeStep = wo.routing?.find((r: any) => r.id === l.routingStepId);
+          return (
+            <tr key={l.id} className="border-b border-gray-50">
+              <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(l.startTime)}</td>
+              <td className="px-4 py-3 text-sm text-gray-800">{unit?.unitIdentifier || `Unit #${l.unitId}`}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{routeStep?.operationName || `Step ${l.sequenceNo}`}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{l.operatorName || "—"}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{l.actualMinutes ? `${l.actualMinutes} min` : (l.status === "In Progress" ? "In progress..." : "—")}</td>
+              <td className="px-4 py-3"><StatusPill status={l.qcStatus} /></td>
+            </tr>
+          );
+        })}
+      </DataTable>
+    </div>
+  );
+}
+
+function WOMaterialsTab({ wo }: { wo: any }) {
+  const materials: MaterialConsumption[] = wo.materialConsumption || [];
+
+  if (materials.length === 0) return <EmptyState icon={Package} text="No material consumption records" />;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <DataTable headers={["Material", "BOM Estimate", "Issued", "Consumed", "Returned", "Variance", "Cost"]}>
+        {materials.map(m => {
+          const varianceNum = parseFloat(m.variance);
+          const varianceColor = varianceNum > 0 ? "text-red-500" : varianceNum < 0 ? "text-green-600" : "text-gray-500";
+          return (
+            <tr key={m.id} className="border-b border-gray-50">
+              <td className="px-4 py-3 text-sm text-gray-800">{m.itemName}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{parseFloat(m.bomEstimatedQty).toFixed(1)} {m.uom}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{parseFloat(m.actualQtyIssued).toFixed(1)}</td>
+              <td className="px-4 py-3 text-sm font-bold text-gray-800">{parseFloat(m.actualQtyConsumed).toFixed(1)}</td>
+              <td className="px-4 py-3 text-sm text-gray-600">{parseFloat(m.returnedQty).toFixed(1)}</td>
+              <td className={`px-4 py-3 text-sm font-semibold ${varianceColor}`}>{varianceNum > 0 ? "+" : ""}{parseFloat(m.variance).toFixed(1)} ({m.variancePercent}%)</td>
+              <td className="px-4 py-3 text-sm font-bold text-gray-800">{fmtCurrency(m.totalCost)}</td>
+            </tr>
+          );
+        })}
+      </DataTable>
+    </div>
+  );
+}
+
+function WOQcTab({ wo }: { wo: any }) {
+  const qcRecords: QCRecord[] = wo.qcRecords || [];
+
+  if (qcRecords.length === 0) return <EmptyState icon={Shield} text="No QC records for this work order" />;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <DataTable headers={["Date", "Unit", "Type", "Result", "Inspected", "Passed", "Rejected", "Inspector", "Defect"]}>
+        {qcRecords.map(qc => (
+          <tr key={qc.id} className="border-b border-gray-50">
+            <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(qc.inspectionDate)}</td>
+            <td className="px-4 py-3 text-sm text-gray-800">{qc.unitIdentifier || "Batch"}</td>
+            <td className="px-4 py-3"><StatusPill status={qc.inspectionType} /></td>
+            <td className="px-4 py-3"><StatusPill status={qc.result} /></td>
+            <td className="px-4 py-3 text-sm text-gray-600">{qc.inspectedQty}</td>
+            <td className="px-4 py-3 text-sm text-green-600 font-bold">{qc.passedQty}</td>
+            <td className="px-4 py-3 text-sm text-red-500 font-bold">{qc.rejectedQty}</td>
+            <td className="px-4 py-3 text-sm text-gray-600">{qc.inspectedBy}</td>
+            <td className="px-4 py-3 text-xs text-gray-500">{qc.defectCategory || "—"}</td>
+          </tr>
+        ))}
+      </DataTable>
+    </div>
+  );
+}
+
+function WODowntimeTab({ wo }: { wo: any }) {
+  const logs: DowntimeLog[] = wo.downtimeLogs || [];
+
+  if (logs.length === 0) return <EmptyState icon={AlertTriangle} text="No downtime events for this work order" />;
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+      <DataTable headers={["Workstation", "Reason", "Start", "End", "Duration", "Cost Impact"]}>
+        {logs.map(l => (
+          <tr key={l.id} className="border-b border-gray-50">
+            <td className="px-4 py-3 text-sm text-gray-800">{l.workstationName}</td>
+            <td className="px-4 py-3 text-sm text-gray-600">{l.reason}</td>
+            <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(l.startTime)}</td>
+            <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(l.endTime)}</td>
+            <td className="px-4 py-3 text-sm text-gray-600">{l.totalMinutesLost} min</td>
+            <td className="px-4 py-3 text-sm font-bold text-red-500">{fmtCurrency(l.costImpact)}</td>
+          </tr>
+        ))}
+      </DataTable>
+    </div>
   );
 }
 
 function QualityControlView({ qcRecords, workOrders, onRefresh }: { qcRecords: QCRecord[]; workOrders: WorkOrder[]; onRefresh: () => void }) {
-  const [showModal, setShowModal] = useState(false);
-  const completedWOs = workOrders.filter(wo => wo.status === "Completed" || wo.status === "QC");
+  const [showLog, setShowLog] = useState(false);
+  const [units, setUnits] = useState<WOUnit[]>([]);
+  const [routing, setRouting] = useState<BOMRouting[]>([]);
+
+  const fetchWODetails = async (woId: number) => {
+    const res = await authFetch(`/api/forge/work-orders/${woId}`);
+    if (res.ok) {
+      const data = await res.json();
+      setUnits(data.units || []);
+      setRouting(data.routing || []);
+    }
+  };
+
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-gray-900">Quality Control</h1><p className="text-sm text-gray-400 mt-0.5">Inspection ledger for completed work orders</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Log Inspection</button></div>
-      {qcRecords.length === 0 ? <EmptyState icon={Shield} text="No quality inspections logged" /> : (
-        <DataTable headers={["WO #", "Product", "Inspected", "Passed", "Rejected", "Rejection Reason", "Inspector", "Date", ""]}>
-          {qcRecords.map(qc => {
-            const passRate = qc.inspectedQty > 0 ? Math.round((qc.passedQty / qc.inspectedQty) * 100) : 0;
-            return (
-              <tr key={qc.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                <td className="px-5 py-3.5 text-xs font-mono text-gray-500">{qc.woNumber}</td>
-                <td className="px-4 py-3.5 text-sm font-medium text-gray-800">{qc.productName}</td>
-                <td className="px-4 py-3.5 text-right text-sm font-bold text-gray-800">{qc.inspectedQty}</td>
-                <td className="px-4 py-3.5 text-right text-sm font-semibold text-green-600">{qc.passedQty}</td>
-                <td className="px-4 py-3.5 text-right text-sm font-semibold text-red-500">{qc.rejectedQty}</td>
-                <td className="px-4 py-3.5 text-xs text-gray-500 max-w-[180px] truncate">{qc.rejectionReason || "—"}</td>
-                <td className="px-4 py-3.5 text-sm text-gray-600">{qc.inspectedBy || "—"}</td>
-                <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(qc.inspectionDate)}</td>
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${passRate >= 90 ? "bg-green-50 text-green-600" : passRate >= 70 ? "bg-amber-50 text-amber-600" : "bg-red-50 text-red-500"}`}>{passRate}% pass</span>
-                    <button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/quality-control/${qc.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1 rounded text-gray-300 hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </div>
-                </td>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-gray-900">Quality Control</h1><p className="text-sm text-gray-400 mt-0.5">Inspection records and quality checks</p></div>
+        <button onClick={() => setShowLog(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15"><Plus className="w-4 h-4" /> Log Inspection</button>
+      </div>
+      {qcRecords.length === 0 ? <EmptyState icon={Shield} text="No QC records yet" /> : (
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+          <DataTable headers={["Date", "WO", "Unit", "Type", "Result", "Inspected", "Passed", "Rejected", "Defect", "Inspector", ""]}>
+            {qcRecords.map(qc => (
+              <tr key={qc.id} className="border-b border-gray-50 hover:bg-gray-50/50 group">
+                <td className="px-4 py-3 text-xs text-gray-500">{fmtDate(qc.inspectionDate)}</td>
+                <td className="px-4 py-3 text-xs font-mono text-gray-500">{qc.woNumber}</td>
+                <td className="px-4 py-3 text-sm text-gray-800">{qc.unitIdentifier || "Batch"}</td>
+                <td className="px-4 py-3"><StatusPill status={qc.inspectionType} /></td>
+                <td className="px-4 py-3"><StatusPill status={qc.result} /></td>
+                <td className="px-4 py-3 text-sm text-gray-600">{qc.inspectedQty}</td>
+                <td className="px-4 py-3 text-sm text-green-600 font-bold">{qc.passedQty}</td>
+                <td className="px-4 py-3 text-sm text-red-500 font-bold">{qc.rejectedQty}</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{qc.defectCategory || "—"}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{qc.inspectedBy}</td>
+                <td className="px-4 py-3"><button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/quality-control/${qc.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button></td>
               </tr>
-            );
-          })}
-        </DataTable>
+            ))}
+          </DataTable>
+        </div>
       )}
-      {showModal && <LogInspectionModal workOrders={completedWOs} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); onRefresh(); }} />}
+      {showLog && <LogInspectionModal workOrders={workOrders} onClose={() => { setShowLog(false); setUnits([]); setRouting([]); }} onSaved={() => { setShowLog(false); setUnits([]); setRouting([]); onRefresh(); }} fetchWODetails={fetchWODetails} units={units} routing={routing} />}
     </div>
   );
 }
 
-function LogInspectionModal({ workOrders, onClose, onSaved }: { workOrders: WorkOrder[]; onClose: () => void; onSaved: () => void }) {
+function LogInspectionModal({ workOrders, onClose, onSaved, fetchWODetails, units, routing }: { workOrders: WorkOrder[]; onClose: () => void; onSaved: () => void; fetchWODetails: (id: number) => void; units: WOUnit[]; routing: BOMRouting[] }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ workOrderId: "", woNumber: "", productName: "", inspectedQty: "", passedQty: "", rejectedQty: "", rejectionReason: "", inspectedBy: "", inspectionDate: new Date().toISOString().split("T")[0] });
-  const handleSelectWO = (woId: string) => {
+  const [form, setForm] = useState({
+    workOrderId: "", woNumber: "", productName: "", unitIdentifier: "", routingStepId: "",
+    inspectionType: "Final", result: "Passed", inspectedQty: "0", passedQty: "0", rejectedQty: "0",
+    rejectionReason: "", inspectedBy: "", defectCategory: "", reworkRequired: false, reworkInstructions: "",
+  });
+
+  const handleWOChange = (woId: string) => {
     const wo = workOrders.find(w => w.id === parseInt(woId));
-    if (wo) setForm({ ...form, workOrderId: woId, woNumber: wo.woNumber, productName: wo.productName, inspectedQty: wo.producedQty.toString() });
+    setForm({ ...form, workOrderId: woId, woNumber: wo?.woNumber || "", productName: wo?.productName || "", unitIdentifier: "", routingStepId: "" });
+    if (woId) fetchWODetails(parseInt(woId));
   };
-  const updateQty = (field: "passedQty" | "rejectedQty", val: string) => {
-    const newForm = { ...form, [field]: val };
-    if (field === "passedQty") newForm.rejectedQty = ((parseInt(form.inspectedQty) || 0) - (parseInt(val) || 0)).toString();
-    if (field === "rejectedQty") newForm.passedQty = ((parseInt(form.inspectedQty) || 0) - (parseInt(val) || 0)).toString();
-    setForm(newForm);
-  };
+
   const handleSave = async () => {
-    if (!form.workOrderId || !form.inspectedQty) return; setSaving(true);
-    try { const res = await authFetch("/api/forge/quality-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, workOrderId: parseInt(form.workOrderId), inspectedQty: parseInt(form.inspectedQty) || 0, passedQty: parseInt(form.passedQty) || 0, rejectedQty: parseInt(form.rejectedQty) || 0, inspectionDate: form.inspectionDate || undefined }) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
+    if (!form.workOrderId) return; setSaving(true);
+    const payload = {
+      ...form, workOrderId: parseInt(form.workOrderId),
+      inspectedQty: parseInt(form.inspectedQty) || 0,
+      passedQty: parseInt(form.passedQty) || 0,
+      rejectedQty: parseInt(form.rejectedQty) || 0,
+      routingStepId: form.routingStepId ? parseInt(form.routingStepId) : null,
+      unitIdentifier: form.unitIdentifier || null,
+      defectCategory: form.defectCategory || null,
+      reworkInstructions: form.reworkInstructions || null,
+    };
+    try { const res = await authFetch("/api/forge/quality-control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (res.ok) onSaved(); else { const err = await res.json(); alert(err.error || "Failed"); } } catch {} finally { setSaving(false); }
   };
+
   return (
-    <Modal title="Log Quality Inspection" icon={Shield} onClose={onClose}>
+    <Modal title="Log QC Inspection" icon={Shield} onClose={onClose} wide>
       <div className="p-6 space-y-4">
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Work Order</label><select value={form.workOrderId} onChange={e => handleSelectWO(e.target.value)} className={inputCls + " cursor-pointer"}><option value="">Select a Work Order...</option>{workOrders.map(wo => <option key={wo.id} value={wo.id}>{wo.woNumber}: {wo.productName} (Produced: {wo.producedQty})</option>)}</select></div>
-        <div className="grid grid-cols-3 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspected Qty</label><input type="number" value={form.inspectedQty} onChange={e => setForm({ ...form, inspectedQty: e.target.value })} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Passed Qty</label><input type="number" value={form.passedQty} onChange={e => updateQty("passedQty", e.target.value)} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Rejected Qty</label><input type="number" value={form.rejectedQty} onChange={e => updateQty("rejectedQty", e.target.value)} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-        </div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Rejection Reason</label><textarea rows={2} value={form.rejectionReason} onChange={e => setForm({ ...form, rejectionReason: e.target.value })} placeholder="e.g. Dimensional out of tolerance, surface defects..." className={inputCls + " resize-none"} /></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspected By</label><input type="text" value={form.inspectedBy} onChange={e => setForm({ ...form, inspectedBy: e.target.value })} className={inputCls} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspection Date</label><input type="date" value={form.inspectionDate} onChange={e => setForm({ ...form, inspectionDate: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Work Order</label>
+            <select value={form.workOrderId} onChange={e => handleWOChange(e.target.value)} className={selectCls}>
+              <option value="">Select WO...</option>
+              {workOrders.map(wo => <option key={wo.id} value={wo.id}>{wo.woNumber} — {wo.productName}</option>)}
+            </select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Unit</label>
+            <select value={form.unitIdentifier} onChange={e => setForm({ ...form, unitIdentifier: e.target.value })} className={selectCls}>
+              <option value="">Batch (no specific unit)</option>
+              {units.map(u => <option key={u.id} value={u.unitIdentifier}>{u.unitIdentifier} ({u.status})</option>)}
+            </select>
+          </div>
         </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Routing Step</label>
+            <select value={form.routingStepId} onChange={e => setForm({ ...form, routingStepId: e.target.value })} className={selectCls}>
+              <option value="">Final Inspection</option>
+              {routing.map(r => <option key={r.id} value={r.id}>{r.sequenceNo}. {r.operationName}</option>)}
+            </select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspection Type</label>
+            <select value={form.inspectionType} onChange={e => setForm({ ...form, inspectionType: e.target.value })} className={selectCls}><option>In-Process</option><option>Final</option><option>Rework</option></select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Result</label>
+            <select value={form.result} onChange={e => setForm({ ...form, result: e.target.value })} className={selectCls}><option>Passed</option><option>Failed</option><option>Conditional</option></select>
+          </div>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspected Qty</label><input type="number" value={form.inspectedQty} onChange={e => setForm({ ...form, inspectedQty: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Passed Qty</label><input type="number" value={form.passedQty} onChange={e => setForm({ ...form, passedQty: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Rejected Qty</label><input type="number" value={form.rejectedQty} onChange={e => setForm({ ...form, rejectedQty: e.target.value })} className={inputCls} /></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Defect Category</label>
+            <select value={form.defectCategory} onChange={e => setForm({ ...form, defectCategory: e.target.value })} className={selectCls}><option value="">None</option><option>Dimensional</option><option>Surface</option><option>Welding</option><option>Material</option><option>Painting</option><option>Assembly</option><option>Other</option></select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Inspected By</label><input value={form.inspectedBy} onChange={e => setForm({ ...form, inspectedBy: e.target.value })} className={inputCls} /></div>
+        </div>
+        {form.result === "Failed" && (
+          <div className="space-y-3">
+            <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Rejection Reason</label><textarea value={form.rejectionReason} onChange={e => setForm({ ...form, rejectionReason: e.target.value })} rows={2} className={inputCls} /></div>
+            <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+              <input type="checkbox" checked={form.reworkRequired} onChange={e => setForm({ ...form, reworkRequired: e.target.checked })} className="w-4 h-4 rounded border-gray-300 text-[#E31E24]" />
+              Rework Required
+            </label>
+            {form.reworkRequired && (
+              <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Rework Instructions</label><textarea value={form.reworkInstructions} onChange={e => setForm({ ...form, reworkInstructions: e.target.value })} rows={2} className={inputCls} /></div>
+            )}
+          </div>
+        )}
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} disabled={!form.workOrderId || !form.inspectedQty} label="Log Inspection" />
+      <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+        <button onClick={handleSave} disabled={saving || !form.workOrderId} className="px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] disabled:opacity-40">{saving ? "Saving..." : "Log Inspection"}</button>
+      </div>
     </Modal>
   );
 }
 
-function DowntimeLogsView({ downtimeLogs, workstations, onRefresh }: { downtimeLogs: DowntimeLog[]; workstations: Workstation[]; onRefresh: () => void }) {
-  const [showModal, setShowModal] = useState(false);
-
-  const reasonColors: Record<string, string> = {
-    "Mechanical Failure": "bg-red-50 text-red-500 border-red-200",
-    "Material Shortage": "bg-amber-50 text-amber-600 border-amber-200",
-    "Labor Absence": "bg-blue-50 text-blue-600 border-blue-200",
-    "Power Outage": "bg-purple-50 text-purple-600 border-purple-200",
-    "Tooling Issue": "bg-orange-50 text-orange-600 border-orange-200",
-    "Other": "bg-gray-50 text-gray-600 border-gray-200",
-  };
-
+function DowntimeLogsView({ downtimeLogs, workstations, workOrders, onRefresh }: { downtimeLogs: DowntimeLog[]; workstations: Workstation[]; workOrders: WorkOrder[]; onRefresh: () => void }) {
+  const [showLog, setShowLog] = useState(false);
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between"><div><h1 className="text-2xl font-bold text-gray-900">Downtime Logs</h1><p className="text-sm text-gray-400 mt-0.5">Track production inefficiencies and stoppages</p></div>
-        <button onClick={() => setShowModal(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 transition-all"><Plus className="w-4 h-4" /> Log Downtime</button></div>
-      {downtimeLogs.length === 0 ? <EmptyState icon={Clock} text="No downtime events logged" /> : (
-        <DataTable headers={["Workstation", "Reason", "Start", "End", "Minutes Lost", "Logged By", ""]}>
-          {downtimeLogs.map(dt => (
-            <tr key={dt.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-              <td className="px-5 py-3.5 text-sm font-medium text-gray-800">{dt.workstationName}</td>
-              <td className="px-4 py-3.5"><span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${reasonColors[dt.reason] || reasonColors["Other"]}`}>{dt.reason}</span></td>
-              <td className="px-4 py-3.5 text-xs text-gray-500">{fmtDate(dt.startTime)} {fmtTime(dt.startTime)}</td>
-              <td className="px-4 py-3.5 text-xs text-gray-500">{dt.endTime ? `${fmtDate(dt.endTime)} ${fmtTime(dt.endTime)}` : "Ongoing"}</td>
-              <td className="px-4 py-3.5 text-right text-sm font-bold text-red-500">{dt.totalMinutesLost} min</td>
-              <td className="px-4 py-3.5 text-sm text-gray-600">{dt.loggedBy || "—"}</td>
-              <td className="px-4 py-3.5"><button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/downtime-logs/${dt.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-3.5 h-3.5" /></button></td>
-            </tr>
-          ))}
-        </DataTable>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-gray-900">Downtime Logs</h1><p className="text-sm text-gray-400 mt-0.5">Track workstation stoppages and lost production time</p></div>
+        <button onClick={() => setShowLog(true)} className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15"><Plus className="w-4 h-4" /> Log Downtime</button>
+      </div>
+      {downtimeLogs.length === 0 ? <EmptyState icon={AlertTriangle} text="No downtime events logged" /> : (
+        <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden">
+          <DataTable headers={["Workstation", "Reason", "Category", "Start", "End", "Duration", "Cost Impact", "WO", "Logged By", ""]}>
+            {downtimeLogs.map(l => (
+              <tr key={l.id} className="border-b border-gray-50 hover:bg-gray-50/50 group">
+                <td className="px-4 py-3 text-sm text-gray-800">{l.workstationName}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{l.reason}</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{l.category}</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(l.startTime)}</td>
+                <td className="px-4 py-3 text-xs text-gray-500">{fmtDateTime(l.endTime)}</td>
+                <td className="px-4 py-3 text-sm font-bold text-gray-800">{l.totalMinutesLost} min</td>
+                <td className="px-4 py-3 text-sm font-bold text-red-500">{fmtCurrency(l.costImpact)}</td>
+                <td className="px-4 py-3 text-xs font-mono text-gray-400">{workOrders.find(w => w.id === l.workOrderId)?.woNumber || "—"}</td>
+                <td className="px-4 py-3 text-sm text-gray-600">{l.loggedBy}</td>
+                <td className="px-4 py-3"><button onClick={async () => { if (confirm("Delete?")) { await authFetch(`/api/forge/downtime-logs/${l.id}`, { method: "DELETE" }); onRefresh(); } }} className="p-1 rounded text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 className="w-3.5 h-3.5" /></button></td>
+              </tr>
+            ))}
+          </DataTable>
+        </div>
       )}
-      {showModal && <LogDowntimeModal workstations={workstations} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); onRefresh(); }} />}
+      {showLog && <LogDowntimeModal workstations={workstations} workOrders={workOrders} onClose={() => setShowLog(false)} onSaved={() => { setShowLog(false); onRefresh(); }} />}
     </div>
   );
 }
 
-function LogDowntimeModal({ workstations, onClose, onSaved }: { workstations: Workstation[]; onClose: () => void; onSaved: () => void }) {
+function LogDowntimeModal({ workstations, workOrders, onClose, onSaved }: { workstations: Workstation[]; workOrders: WorkOrder[]; onClose: () => void; onSaved: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ workstationId: "", workstationName: "", reason: "Mechanical Failure", startTime: "", endTime: "", totalMinutesLost: "", loggedBy: "", notes: "" });
-  const handleSelectWS = (wsId: string) => { const ws = workstations.find(w => w.id === parseInt(wsId)); setForm({ ...form, workstationId: wsId, workstationName: ws?.name || "" }); };
+  const [form, setForm] = useState({
+    workstationId: "", workstationName: "", reason: "Mechanical Failure", workOrderId: "",
+    startTime: "", endTime: "", totalMinutesLost: "0", notes: "", loggedBy: "",
+  });
 
-  const calcMinutes = (start: string, end: string) => {
-    if (!start || !end) return 0;
-    const diff = new Date(end).getTime() - new Date(start).getTime();
-    return Math.max(0, Math.round(diff / 60000));
+  const selectWS = (id: string) => {
+    const ws = workstations.find(w => w.id === parseInt(id));
+    setForm({ ...form, workstationId: id, workstationName: ws?.name || "" });
   };
 
-  const updateTime = (field: "startTime" | "endTime", val: string) => {
-    const newForm = { ...form, [field]: val };
-    if (newForm.startTime && newForm.endTime) { newForm.totalMinutesLost = calcMinutes(newForm.startTime, newForm.endTime).toString(); }
-    setForm(newForm);
+  const calcMinutes = (start: string, end: string) => {
+    if (!start || !end) return "0";
+    const diff = (new Date(end).getTime() - new Date(start).getTime()) / 60000;
+    return Math.max(0, Math.round(diff)).toString();
   };
 
   const handleSave = async () => {
     if (!form.workstationId || !form.startTime) return; setSaving(true);
-    try { const res = await authFetch("/api/forge/downtime-logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, workstationId: parseInt(form.workstationId), totalMinutesLost: parseInt(form.totalMinutesLost) || 0, startTime: form.startTime, endTime: form.endTime || undefined }) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
+    const payload = {
+      ...form,
+      workstationId: parseInt(form.workstationId),
+      workOrderId: form.workOrderId ? parseInt(form.workOrderId) : null,
+      totalMinutesLost: parseInt(form.totalMinutesLost) || 0,
+      startTime: new Date(form.startTime).toISOString(),
+      endTime: form.endTime ? new Date(form.endTime).toISOString() : null,
+    };
+    try { const res = await authFetch("/api/forge/downtime-logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); if (res.ok) onSaved(); } catch {} finally { setSaving(false); }
   };
+
   return (
-    <Modal title="Log Downtime Event" icon={Clock} onClose={onClose}>
+    <Modal title="Log Downtime" icon={AlertTriangle} onClose={onClose}>
       <div className="p-6 space-y-4">
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Workstation</label><select value={form.workstationId} onChange={e => handleSelectWS(e.target.value)} className={inputCls + " cursor-pointer"}><option value="">Select Workstation...</option>{workstations.map(ws => <option key={ws.id} value={ws.id}>{ws.name} ({ws.type})</option>)}</select></div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Downtime Reason</label><select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className={inputCls + " cursor-pointer"}><option value="Mechanical Failure">Mechanical Failure</option><option value="Material Shortage">Material Shortage</option><option value="Labor Absence">Labor Absence</option><option value="Power Outage">Power Outage</option><option value="Tooling Issue">Tooling Issue</option><option value="Other">Other</option></select></div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Start Time</label><input type="datetime-local" value={form.startTime} onChange={e => updateTime("startTime", e.target.value)} className={inputCls} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">End Time</label><input type="datetime-local" value={form.endTime} onChange={e => updateTime("endTime", e.target.value)} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Workstation</label>
+            <select value={form.workstationId} onChange={e => selectWS(e.target.value)} className={selectCls}>
+              <option value="">Select...</option>
+              {workstations.map(ws => <option key={ws.id} value={ws.id}>{ws.name}</option>)}
+            </select>
+          </div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Work Order (Optional)</label>
+            <select value={form.workOrderId} onChange={e => setForm({ ...form, workOrderId: e.target.value })} className={selectCls}>
+              <option value="">None</option>
+              {workOrders.filter(w => w.status === "In Progress").map(wo => <option key={wo.id} value={wo.id}>{wo.woNumber} — {wo.productName}</option>)}
+            </select>
+          </div>
+        </div>
+        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Reason</label>
+          <select value={form.reason} onChange={e => setForm({ ...form, reason: e.target.value })} className={selectCls}>
+            {["Mechanical Failure", "Electrical Failure", "Material Shortage", "Operator Absence", "Power Outage", "Scheduled Maintenance", "Tool Change", "Setup", "Other"].map(r => <option key={r}>{r}</option>)}
+          </select>
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Start Time</label><input type="datetime-local" value={form.startTime} onChange={e => { const s = e.target.value; setForm({ ...form, startTime: s, totalMinutesLost: calcMinutes(s, form.endTime) }); }} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">End Time</label><input type="datetime-local" value={form.endTime} onChange={e => { const end = e.target.value; setForm({ ...form, endTime: end, totalMinutesLost: calcMinutes(form.startTime, end) }); }} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Minutes Lost</label><input type="number" value={form.totalMinutesLost} onChange={e => setForm({ ...form, totalMinutesLost: e.target.value })} className={inputCls} /></div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Total Minutes Lost</label><input type="number" value={form.totalMinutesLost} onChange={e => setForm({ ...form, totalMinutesLost: e.target.value })} className={inputCls + " [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"} /></div>
-          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Logged By</label><input type="text" value={form.loggedBy} onChange={e => setForm({ ...form, loggedBy: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Logged By</label><input value={form.loggedBy} onChange={e => setForm({ ...form, loggedBy: e.target.value })} className={inputCls} /></div>
+          <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Notes</label><input value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={inputCls} /></div>
         </div>
-        <div><label className="block text-xs font-medium text-gray-500 mb-1.5">Notes</label><textarea rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} className={inputCls + " resize-none"} /></div>
       </div>
-      <ModalFooter onClose={onClose} onSave={handleSave} saving={saving} disabled={!form.workstationId || !form.startTime} label="Log Downtime" />
+      <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+        <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200">Cancel</button>
+        <button onClick={handleSave} disabled={saving || !form.workstationId || !form.startTime} className="px-5 py-2.5 text-sm font-medium text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] disabled:opacity-40">{saving ? "Saving..." : "Log Downtime"}</button>
+      </div>
     </Modal>
   );
 }
 
-function EmptyState({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) {
-  return <div className="text-center py-16 bg-white border border-gray-100 rounded-xl shadow-sm"><Icon className="w-10 h-10 text-gray-200 mx-auto mb-3" /><p className="text-sm text-gray-400">{text}</p></div>;
-}
-
-function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
-  return (
-    <div className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden"><table className="w-full text-sm"><thead><tr className="border-b border-gray-100 bg-gray-50/50">
-      {headers.map((h, i) => <th key={i} className={`px-${i === 0 ? 5 : 4} py-3 text-${h ? "left" : "center"} text-[10px] font-semibold text-gray-500 uppercase tracking-wider ${!h ? "w-[80px]" : ""}`}>{h}</th>)}
-    </tr></thead><tbody>{children}</tbody></table></div>
-  );
-}
-
-function Modal({ title, icon: Icon, onClose, children, wide }: { title: string; icon: React.ComponentType<{ className?: string }>; onClose: () => void; children: React.ReactNode; wide?: boolean }) {
+function Modal({ title, icon: Icon, children, onClose, wide }: { title: string; icon: React.ComponentType<{ className?: string }>; children: React.ReactNode; onClose: () => void; wide?: boolean }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-[2px]" onClick={onClose}>
-      <div className={`bg-white rounded-2xl shadow-2xl ${wide ? "w-[680px]" : "w-[520px]"} max-h-[90vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg bg-[#E31E24]/10 flex items-center justify-center"><Icon className="w-4 h-4 text-[#E31E24]" /></div><h2 className="text-lg font-bold text-gray-900">{title}</h2></div><button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"><X className="w-5 h-5" /></button></div>
+      <div className={`bg-white rounded-2xl shadow-2xl ${wide ? "w-[850px]" : "w-[600px]"} max-h-[92vh] overflow-y-auto`} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg bg-[#E31E24]/10 flex items-center justify-center"><Icon className="w-4 h-4 text-[#E31E24]" /></div><h2 className="text-lg font-bold text-gray-900">{title}</h2></div>
+          <button onClick={onClose} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"><X className="w-5 h-5" /></button>
+        </div>
         {children}
       </div>
     </div>
   );
 }
 
-function ModalFooter({ onClose, onSave, saving, disabled, label }: { onClose: () => void; onSave: () => void; saving: boolean; disabled: boolean; label: string }) {
+function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
   return (
-    <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-end gap-2">
-      <button onClick={onClose} className="px-4 py-2.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50">Cancel</button>
-      <button onClick={onSave} disabled={saving || disabled} className="inline-flex items-center gap-1.5 px-5 py-2.5 text-sm font-semibold text-white bg-[#E31E24] rounded-lg hover:bg-[#c9191f] shadow-lg shadow-red-500/15 disabled:opacity-50"><Plus className="w-4 h-4" /> {label}</button>
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead><tr className="bg-gray-50 border-b border-gray-200">
+          {headers.map((h, i) => <th key={i} className="px-4 py-2.5 text-left text-[10px] font-semibold text-gray-500 uppercase whitespace-nowrap">{h}</th>)}
+        </tr></thead>
+        <tbody>{children}</tbody>
+      </table>
+    </div>
+  );
+}
+
+function EmptyState({ icon: Icon, text }: { icon: React.ComponentType<{ className?: string }>; text: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 bg-white border border-gray-100 rounded-xl shadow-sm">
+      <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center mb-4"><Icon className="w-6 h-6 text-gray-300" /></div>
+      <p className="text-sm text-gray-400">{text}</p>
     </div>
   );
 }
