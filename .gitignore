@@ -9,6 +9,7 @@ out-tsc
 .expo-shared
 build/
 .build/
+.env
 
 # dependencies
 node_modules/
