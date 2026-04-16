@@ -1,24 +1,34 @@
-import { pgTable, serial, integer, varchar, numeric, text } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { invoicesTable } from "./invoices";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const invoiceItemsTable = pgTable("legacy_invoice_items", {
-  id: serial("id").primaryKey(),
-  invoiceId: integer("invoice_id").references(() => invoicesTable.id, { onDelete: "cascade" }).notNull(),
-  description: text("description").notNull().default(""),
-  hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
-  qty: numeric("qty", { precision: 12, scale: 2 }).notNull().default("1"),
-  unit: varchar("unit", { length: 20 }).notNull().default("NOS"),
-  rate: numeric("rate", { precision: 14, scale: 2 }).notNull().default("0"),
-  taxPercentage: numeric("tax_percentage", { precision: 5, scale: 2 }).notNull().default("18"),
-  taxAmount: numeric("tax_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  lineTotal: numeric("line_total", { precision: 14, scale: 2 }).notNull().default("0"),
+const InvoiceItemSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  invoiceId: { type: Number, required: true },
+  description: { type: String, default: "" },
+  hsnSac: { type: String, default: "" },
+  qty: { type: Number, default: 1 },
+  unit: { type: String, default: "NOS" },
+  rate: { type: Number, default: 0 },
+  taxPercentage: { type: Number, default: 18 },
+  taxAmount: { type: Number, default: 0 },
+  lineTotal: { type: Number, default: 0 },
 });
 
-export const insertInvoiceItemSchema = createInsertSchema(invoiceItemsTable).omit({
-  id: true,
+autoIncrementId(InvoiceItemSchema, "legacy_invoice_items");
+export const invoiceItemsTable = mongoose.models.InvoiceItem || mongoose.model("InvoiceItem", InvoiceItemSchema);
+
+export const insertInvoiceItemSchema = z.object({
+  invoiceId: z.coerce.number(),
+  description: z.string().default("").optional(),
+  hsnSac: z.string().default("").optional(),
+  qty: z.coerce.number().default(1),
+  unit: z.string().default("NOS").optional(),
+  rate: z.coerce.number().default(0),
+  taxPercentage: z.coerce.number().default(18),
+  taxAmount: z.coerce.number().default(0),
+  lineTotal: z.coerce.number().default(0),
 });
 
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
-export type InvoiceItem = typeof invoiceItemsTable.$inferSelect;
+export type InvoiceItem = mongoose.InferSchemaType<typeof InvoiceItemSchema>;

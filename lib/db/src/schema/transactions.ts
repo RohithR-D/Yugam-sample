@@ -1,24 +1,27 @@
-import { pgTable, serial, varchar, numeric, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const transactionsTable = pgTable("transactions", {
-  id: serial("id").primaryKey(),
-  date: timestamp("date").notNull(),
-  description: varchar("description", { length: 500 }).notNull(),
-  category: varchar("category", { length: 100 }).notNull(),
-  type: varchar("type", { length: 50 }).notNull(),
-  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+const TransactionSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  date: { type: Date, required: true },
+  description: { type: String, required: true },
+  category: { type: String, required: true },
+  type: { type: String, required: true },
+  amount: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertTransactionSchema = createInsertSchema(transactionsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  type: z.enum(["Credit", "Debit"]),
+autoIncrementId(TransactionSchema, "transactions");
+export const transactionsTable = mongoose.models.Transaction || mongoose.model("Transaction", TransactionSchema);
+
+export const insertTransactionSchema = z.object({
   date: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  description: z.string().min(1),
+  category: z.string().min(1),
+  type: z.enum(["Credit", "Debit"]),
+  amount: z.coerce.number(),
 });
 
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
-export type Transaction = typeof transactionsTable.$inferSelect;
+export type Transaction = mongoose.InferSchemaType<typeof TransactionSchema>;

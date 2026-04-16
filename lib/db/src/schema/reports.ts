@@ -1,22 +1,25 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const reportsTable = pgTable("reports", {
-  id: serial("id").primaryKey(),
-  reportName: varchar("report_name", { length: 500 }).notNull(),
-  moduleSource: varchar("module_source", { length: 100 }).notNull(),
-  chartType: varchar("chart_type", { length: 50 }).notNull(),
-  lastRun: timestamp("last_run").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+const ReportSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  reportName: { type: String, required: true },
+  moduleSource: { type: String, required: true },
+  chartType: { type: String, required: true },
+  lastRun: { type: Date, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertReportSchema = createInsertSchema(reportsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(ReportSchema, "reports");
+export const reportsTable = mongoose.models.Report || mongoose.model("Report", ReportSchema);
+
+export const insertReportSchema = z.object({
+  reportName: z.string().min(1),
+  moduleSource: z.string().min(1),
+  chartType: z.string().min(1),
   lastRun: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
 });
 
 export type InsertReport = z.infer<typeof insertReportSchema>;
-export type Report = typeof reportsTable.$inferSelect;
+export type Report = mongoose.InferSchemaType<typeof ReportSchema>;

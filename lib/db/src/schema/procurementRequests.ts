@@ -1,241 +1,336 @@
-import { pgTable, serial, varchar, integer, numeric, timestamp, text } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { inventoryCatalogTable } from "./inventoryCatalog";
-import { inventoryLocationsTable } from "./inventoryLocations";
-import { journalEntriesTable } from "./ledger";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const materialRequestsTable = pgTable("material_requests", {
-  id: serial("id").primaryKey(),
-  itemName: varchar("item_name", { length: 255 }).notNull(),
-  itemId: integer("item_id"),
-  requestedQty: integer("requested_qty").notNull().default(1),
-  requiredByDate: timestamp("required_by_date"),
-  department: varchar("department", { length: 100 }).notNull().default(""),
-  project: varchar("project", { length: 255 }).notNull().default(""),
-  requestedBy: varchar("requested_by", { length: 100 }).notNull().default(""),
-  status: varchar("status", { length: 30 }).notNull().default("Pending"),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const MaterialRequestSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  itemName: { type: String, required: true },
+  itemId: { type: Number },
+  requestedQty: { type: Number, default: 1 },
+  requiredByDate: { type: Date },
+  department: { type: String, default: "" },
+  project: { type: String, default: "" },
+  requestedBy: { type: String, default: "" },
+  status: { type: String, default: "Pending" },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertMaterialRequestSchema = createInsertSchema(materialRequestsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(MaterialRequestSchema, "material_requests");
+export const materialRequestsTable = mongoose.models.MaterialRequest || mongoose.model("MaterialRequest", MaterialRequestSchema);
+
+export const insertMaterialRequestSchema = z.object({
+  itemName: z.string().min(1),
+  itemId: z.coerce.number().optional(),
+  requestedQty: z.coerce.number().default(1),
+  requiredByDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  department: z.string().default("").optional(),
+  project: z.string().default("").optional(),
+  requestedBy: z.string().default("").optional(),
   status: z.enum(["Pending", "Approved", "Rejected"]).default("Pending"),
-  requiredByDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
+  notes: z.string().default("").optional(),
 });
 
-export const purchaseRequestsTable = pgTable("purchase_requests", {
-  id: serial("id").primaryKey(),
-  materialRequestId: integer("material_request_id").references(() => materialRequestsTable.id),
-  itemName: varchar("item_name", { length: 255 }).notNull(),
-  itemId: integer("item_id"),
-  requestedQty: integer("requested_qty").notNull().default(1),
-  estimatedUnitPrice: numeric("estimated_unit_price", { precision: 14, scale: 2 }).notNull().default("0"),
-  requiredByDate: timestamp("required_by_date"),
-  department: varchar("department", { length: 100 }).notNull().default(""),
-  project: varchar("project", { length: 255 }).notNull().default(""),
-  requestedBy: varchar("requested_by", { length: 100 }).notNull().default(""),
-  status: varchar("status", { length: 30 }).notNull().default("Pending"),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const PurchaseRequestSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  materialRequestId: { type: Number },
+  itemName: { type: String, required: true },
+  itemId: { type: Number },
+  requestedQty: { type: Number, default: 1 },
+  estimatedUnitPrice: { type: Number, default: 0 },
+  requiredByDate: { type: Date },
+  department: { type: String, default: "" },
+  project: { type: String, default: "" },
+  requestedBy: { type: String, default: "" },
+  status: { type: String, default: "Pending" },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertPurchaseRequestSchema = createInsertSchema(purchaseRequestsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(PurchaseRequestSchema, "purchase_requests");
+export const purchaseRequestsTable = mongoose.models.PurchaseRequest || mongoose.model("PurchaseRequest", PurchaseRequestSchema);
+
+export const insertPurchaseRequestSchema = z.object({
+  materialRequestId: z.coerce.number().optional(),
+  itemName: z.string().min(1),
+  itemId: z.coerce.number().optional(),
+  requestedQty: z.coerce.number().default(1),
+  estimatedUnitPrice: z.coerce.number().default(0),
+  requiredByDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  department: z.string().default("").optional(),
+  project: z.string().default("").optional(),
+  requestedBy: z.string().default("").optional(),
   status: z.enum(["Pending", "Approved", "Rejected", "Converted"]).default("Pending"),
-  requiredByDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
+  notes: z.string().default("").optional(),
 });
 
-export const rfqTable = pgTable("rfq_requests", {
-  id: serial("id").primaryKey(),
-  purchaseRequestId: integer("purchase_request_id").references(() => purchaseRequestsTable.id),
-  rfqNumber: varchar("rfq_number", { length: 100 }).notNull(),
-  itemName: varchar("item_name", { length: 255 }).notNull(),
-  itemId: integer("item_id"),
-  quantity: integer("quantity").notNull().default(1),
-  vendors: text("vendors").notNull().default("[]"),
-  status: varchar("status", { length: 30 }).notNull().default("Open"),
-  requiredByDate: timestamp("required_by_date"),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const RfqSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  purchaseRequestId: { type: Number },
+  rfqNumber: { type: String, required: true },
+  itemName: { type: String, required: true },
+  itemId: { type: Number },
+  quantity: { type: Number, default: 1 },
+  vendors: { type: String, default: "[]" },
+  status: { type: String, default: "Open" },
+  requiredByDate: { type: Date },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertRfqSchema = createInsertSchema(rfqTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(RfqSchema, "rfq_requests");
+export const rfqTable = mongoose.models.Rfq || mongoose.model("Rfq", RfqSchema);
+
+export const insertRfqSchema = z.object({
+  purchaseRequestId: z.coerce.number().optional(),
+  rfqNumber: z.string().min(1),
+  itemName: z.string().min(1),
+  itemId: z.coerce.number().optional(),
+  quantity: z.coerce.number().default(1),
+  vendors: z.string().default("[]").optional(),
   status: z.enum(["Open", "Received", "Closed"]).default("Open"),
-  requiredByDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
+  requiredByDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  notes: z.string().default("").optional(),
 });
 
-export const rfqBidsTable = pgTable("rfq_bids", {
-  id: serial("id").primaryKey(),
-  rfqId: integer("rfq_id").notNull().references(() => rfqTable.id),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull().default("0"),
-  taxPercent: numeric("tax_percent", { precision: 5, scale: 2 }).notNull().default("0"),
-  leadTimeDays: integer("lead_time_days").notNull().default(0),
-  notes: text("notes").notNull().default(""),
-  selected: varchar("selected", { length: 10 }).notNull().default("No"),
-  createdAt: timestamp("created_at").defaultNow(),
+const RfqBidSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  rfqId: { type: Number, required: true },
+  vendorName: { type: String, required: true },
+  unitPrice: { type: Number, default: 0 },
+  taxPercent: { type: Number, default: 0 },
+  leadTimeDays: { type: Number, default: 0 },
+  notes: { type: String, default: "" },
+  selected: { type: String, default: "No" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertRfqBidSchema = createInsertSchema(rfqBidsTable).omit({
-  id: true,
-  createdAt: true,
+autoIncrementId(RfqBidSchema, "rfq_bids");
+export const rfqBidsTable = mongoose.models.RfqBid || mongoose.model("RfqBid", RfqBidSchema);
+
+export const insertRfqBidSchema = z.object({
+  rfqId: z.coerce.number(),
+  vendorName: z.string().min(1),
+  unitPrice: z.coerce.number().default(0),
+  taxPercent: z.coerce.number().default(0),
+  leadTimeDays: z.coerce.number().default(0),
+  notes: z.string().default("").optional(),
+  selected: z.string().default("No").optional(),
 });
 
-export const flexPurchaseOrdersTable = pgTable("flex_purchase_orders", {
-  id: serial("id").primaryKey(),
-  poNumber: varchar("po_number", { length: 100 }).notNull(),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  rfqId: integer("rfq_id").references(() => rfqTable.id),
-  poDate: timestamp("po_date"),
-  deliveryDate: timestamp("delivery_date"),
-  subtotal: numeric("subtotal", { precision: 14, scale: 2 }).notNull().default("0"),
-  cgstTotal: numeric("cgst_total", { precision: 14, scale: 2 }).notNull().default("0"),
-  sgstTotal: numeric("sgst_total", { precision: 14, scale: 2 }).notNull().default("0"),
-  igstTotal: numeric("igst_total", { precision: 14, scale: 2 }).notNull().default("0"),
-  grandTotal: numeric("grand_total", { precision: 14, scale: 2 }).notNull().default("0"),
-  terms: text("terms").notNull().default(""),
-  status: varchar("status", { length: 30 }).notNull().default("Draft"),
-  createdAt: timestamp("created_at").defaultNow(),
+const FlexPurchaseOrderSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  poNumber: { type: String, required: true },
+  vendorName: { type: String, required: true },
+  rfqId: { type: Number },
+  poDate: { type: Date },
+  deliveryDate: { type: Date },
+  subtotal: { type: Number, default: 0 },
+  cgstTotal: { type: Number, default: 0 },
+  sgstTotal: { type: Number, default: 0 },
+  igstTotal: { type: Number, default: 0 },
+  grandTotal: { type: Number, default: 0 },
+  terms: { type: String, default: "" },
+  status: { type: String, default: "Draft" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertFlexPOSchema = createInsertSchema(flexPurchaseOrdersTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(FlexPurchaseOrderSchema, "flex_purchase_orders");
+export const flexPurchaseOrdersTable = mongoose.models.FlexPurchaseOrder || mongoose.model("FlexPurchaseOrder", FlexPurchaseOrderSchema);
+
+export const insertFlexPOSchema = z.object({
+  poNumber: z.string().min(1),
+  vendorName: z.string().min(1),
+  rfqId: z.coerce.number().optional(),
+  poDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  deliveryDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  subtotal: z.coerce.number().default(0),
+  cgstTotal: z.coerce.number().default(0),
+  sgstTotal: z.coerce.number().default(0),
+  igstTotal: z.coerce.number().default(0),
+  grandTotal: z.coerce.number().default(0),
+  terms: z.string().default("").optional(),
   status: z.enum(["Draft", "Sent", "Acknowledged", "Closed"]).default("Draft"),
-  poDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
-  deliveryDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
 });
 
-export const flexPOItemsTable = pgTable("flex_po_items", {
-  id: serial("id").primaryKey(),
-  poId: integer("po_id").notNull().references(() => flexPurchaseOrdersTable.id, { onDelete: "cascade" }),
-  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
-  description: varchar("description", { length: 500 }).notNull(),
-  hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
-  qty: integer("qty").notNull().default(1),
-  rate: numeric("rate", { precision: 14, scale: 2 }).notNull().default("0"),
-  cgstPercent: numeric("cgst_percent", { precision: 5, scale: 2 }).notNull().default("0"),
-  sgstPercent: numeric("sgst_percent", { precision: 5, scale: 2 }).notNull().default("0"),
-  igstPercent: numeric("igst_percent", { precision: 5, scale: 2 }).notNull().default("0"),
-  lineTotal: numeric("line_total", { precision: 14, scale: 2 }).notNull().default("0"),
+const FlexPOItemSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  poId: { type: Number, required: true },
+  itemId: { type: Number },
+  description: { type: String, required: true },
+  hsnSac: { type: String, default: "" },
+  qty: { type: Number, default: 1 },
+  rate: { type: Number, default: 0 },
+  cgstPercent: { type: Number, default: 0 },
+  sgstPercent: { type: Number, default: 0 },
+  igstPercent: { type: Number, default: 0 },
+  lineTotal: { type: Number, default: 0 },
 });
 
-export const insertFlexPOItemSchema = createInsertSchema(flexPOItemsTable).omit({ id: true });
+autoIncrementId(FlexPOItemSchema, "flex_po_items");
+export const flexPOItemsTable = mongoose.models.FlexPOItem || mongoose.model("FlexPOItem", FlexPOItemSchema);
 
-export const goodsReceiptsTable = pgTable("goods_receipts", {
-  id: serial("id").primaryKey(),
-  grnNumber: varchar("grn_number", { length: 100 }).notNull(),
-  poId: integer("po_id").notNull().references(() => flexPurchaseOrdersTable.id),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull().default(""),
-  receivedDate: timestamp("received_date"),
-  receivedBy: varchar("received_by", { length: 100 }).notNull().default(""),
-  receivedAtLocationId: integer("received_at_location_id").references(() => inventoryLocationsTable.id),
-  notes: text("notes").notNull().default(""),
-  status: varchar("status", { length: 30 }).notNull().default("Pending"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertFlexPOItemSchema = z.object({
+  poId: z.coerce.number(),
+  itemId: z.coerce.number().optional(),
+  description: z.string().min(1),
+  hsnSac: z.string().default("").optional(),
+  qty: z.coerce.number().default(1),
+  rate: z.coerce.number().default(0),
+  cgstPercent: z.coerce.number().default(0),
+  sgstPercent: z.coerce.number().default(0),
+  igstPercent: z.coerce.number().default(0),
+  lineTotal: z.coerce.number().default(0),
 });
 
-export const insertGoodsReceiptSchema = createInsertSchema(goodsReceiptsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+const GoodsReceiptSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  grnNumber: { type: String, required: true },
+  poId: { type: Number, required: true },
+  vendorName: { type: String, default: "" },
+  receivedDate: { type: Date },
+  receivedBy: { type: String, default: "" },
+  receivedAtLocationId: { type: Number },
+  notes: { type: String, default: "" },
+  status: { type: String, default: "Pending" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+autoIncrementId(GoodsReceiptSchema, "goods_receipts");
+export const goodsReceiptsTable = mongoose.models.GoodsReceipt || mongoose.model("GoodsReceipt", GoodsReceiptSchema);
+
+export const insertGoodsReceiptSchema = z.object({
+  grnNumber: z.string().min(1),
+  poId: z.coerce.number(),
+  vendorName: z.string().default("").optional(),
+  receivedDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  receivedBy: z.string().default("").optional(),
+  receivedAtLocationId: z.coerce.number().optional(),
+  notes: z.string().default("").optional(),
   status: z.enum(["Pending", "Partial", "Complete"]).default("Pending"),
-  receivedDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
 });
 
-export const grnItemsTable = pgTable("grn_items", {
-  id: serial("id").primaryKey(),
-  grnId: integer("grn_id").notNull().references(() => goodsReceiptsTable.id, { onDelete: "cascade" }),
-  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
-  poItemId: integer("po_item_id").references(() => flexPOItemsTable.id),
-  description: varchar("description", { length: 500 }).notNull(),
-  orderedQty: integer("ordered_qty").notNull().default(0),
-  receivedQty: integer("received_qty").notNull().default(0),
-  acceptedQty: integer("accepted_qty").notNull().default(0),
-  rejectedQty: integer("rejected_qty").notNull().default(0),
+const GrnItemSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  grnId: { type: Number, required: true },
+  itemId: { type: Number },
+  poItemId: { type: Number },
+  description: { type: String, required: true },
+  orderedQty: { type: Number, default: 0 },
+  receivedQty: { type: Number, default: 0 },
+  acceptedQty: { type: Number, default: 0 },
+  rejectedQty: { type: Number, default: 0 },
 });
 
-export const insertGrnItemSchema = createInsertSchema(grnItemsTable).omit({ id: true });
+autoIncrementId(GrnItemSchema, "grn_items");
+export const grnItemsTable = mongoose.models.GrnItem || mongoose.model("GrnItem", GrnItemSchema);
 
-export const purchaseInvoicesTable = pgTable("purchase_invoices", {
-  id: serial("id").primaryKey(),
-  invoiceNumber: varchar("invoice_number", { length: 100 }).notNull(),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
-  grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
-  invoiceDate: timestamp("invoice_date"),
-  paymentDueDays: integer("payment_due_days").notNull().default(30),
-  invoiceAmount: numeric("invoice_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  taxableAmount: numeric("taxable_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  cgstAmount: numeric("cgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  sgstAmount: numeric("sgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  igstAmount: numeric("igst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  poAmount: numeric("po_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  grnAmount: numeric("grn_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  matchStatus: varchar("match_status", { length: 30 }).notNull().default("Pending"),
-  paymentStatus: varchar("payment_status", { length: 30 }).notNull().default("Unpaid"),
-  journalEntryId: integer("journal_entry_id").references(() => journalEntriesTable.id),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertGrnItemSchema = z.object({
+  grnId: z.coerce.number(),
+  itemId: z.coerce.number().optional(),
+  poItemId: z.coerce.number().optional(),
+  description: z.string().min(1),
+  orderedQty: z.coerce.number().default(0),
+  receivedQty: z.coerce.number().default(0),
+  acceptedQty: z.coerce.number().default(0),
+  rejectedQty: z.coerce.number().default(0),
 });
 
-export const insertPurchaseInvoiceSchema = createInsertSchema(purchaseInvoicesTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+const PurchaseInvoiceSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  invoiceNumber: { type: String, required: true },
+  vendorName: { type: String, required: true },
+  poId: { type: Number },
+  grnId: { type: Number },
+  invoiceDate: { type: Date },
+  paymentDueDays: { type: Number, default: 30 },
+  invoiceAmount: { type: Number, default: 0 },
+  taxableAmount: { type: Number, default: 0 },
+  cgstAmount: { type: Number, default: 0 },
+  sgstAmount: { type: Number, default: 0 },
+  igstAmount: { type: Number, default: 0 },
+  poAmount: { type: Number, default: 0 },
+  grnAmount: { type: Number, default: 0 },
+  matchStatus: { type: String, default: "Pending" },
+  paymentStatus: { type: String, default: "Unpaid" },
+  journalEntryId: { type: Number },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+autoIncrementId(PurchaseInvoiceSchema, "purchase_invoices");
+export const purchaseInvoicesTable = mongoose.models.PurchaseInvoice || mongoose.model("PurchaseInvoice", PurchaseInvoiceSchema);
+
+export const insertPurchaseInvoiceSchema = z.object({
+  invoiceNumber: z.string().min(1),
+  vendorName: z.string().min(1),
+  poId: z.coerce.number().optional(),
+  grnId: z.coerce.number().optional(),
+  invoiceDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  paymentDueDays: z.coerce.number().default(30),
+  invoiceAmount: z.coerce.number().default(0),
+  taxableAmount: z.coerce.number().default(0),
+  cgstAmount: z.coerce.number().default(0),
+  sgstAmount: z.coerce.number().default(0),
+  igstAmount: z.coerce.number().default(0),
+  poAmount: z.coerce.number().default(0),
+  grnAmount: z.coerce.number().default(0),
   matchStatus: z.enum(["Pending", "Matched", "Mismatch"]).default("Pending"),
   paymentStatus: z.enum(["Unpaid", "Approved", "Paid"]).default("Unpaid"),
-  invoiceDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
+  notes: z.string().default("").optional(),
 });
 
-export const purchaseReturnsTable = pgTable("purchase_returns", {
-  id: serial("id").primaryKey(),
-  returnNumber: varchar("return_number", { length: 100 }).notNull(),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  poId: integer("po_id").references(() => flexPurchaseOrdersTable.id),
-  grnId: integer("grn_id").references(() => goodsReceiptsTable.id),
-  itemId: integer("item_id").references(() => inventoryCatalogTable.id),
-  locationId: integer("location_id").references(() => inventoryLocationsTable.id),
-  itemName: varchar("item_name", { length: 255 }).notNull(),
-  returnedQty: integer("returned_qty").notNull().default(0),
-  returnAmount: numeric("return_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  cgstAmount: numeric("cgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  sgstAmount: numeric("sgst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  igstAmount: numeric("igst_amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  reason: varchar("reason", { length: 30 }).notNull().default("Damage"),
-  notes: text("notes").notNull().default(""),
-  returnDate: timestamp("return_date"),
-  journalEntryId: integer("journal_entry_id").references(() => journalEntriesTable.id),
-  status: varchar("status", { length: 30 }).notNull().default("Initiated"),
-  createdAt: timestamp("created_at").defaultNow(),
+const PurchaseReturnSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  returnNumber: { type: String, required: true },
+  vendorName: { type: String, required: true },
+  poId: { type: Number },
+  grnId: { type: Number },
+  itemId: { type: Number },
+  locationId: { type: Number },
+  itemName: { type: String, required: true },
+  returnedQty: { type: Number, default: 0 },
+  returnAmount: { type: Number, default: 0 },
+  cgstAmount: { type: Number, default: 0 },
+  sgstAmount: { type: Number, default: 0 },
+  igstAmount: { type: Number, default: 0 },
+  reason: { type: String, default: "Damage" },
+  notes: { type: String, default: "" },
+  returnDate: { type: Date },
+  journalEntryId: { type: Number },
+  status: { type: String, default: "Initiated" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertPurchaseReturnSchema = createInsertSchema(purchaseReturnsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(PurchaseReturnSchema, "purchase_returns");
+export const purchaseReturnsTable = mongoose.models.PurchaseReturn || mongoose.model("PurchaseReturn", PurchaseReturnSchema);
+
+export const insertPurchaseReturnSchema = z.object({
+  returnNumber: z.string().min(1),
+  vendorName: z.string().min(1),
+  poId: z.coerce.number().optional(),
+  grnId: z.coerce.number().optional(),
+  itemId: z.coerce.number().optional(),
+  locationId: z.coerce.number().optional(),
+  itemName: z.string().min(1),
+  returnedQty: z.coerce.number().default(0),
+  returnAmount: z.coerce.number().default(0),
+  cgstAmount: z.coerce.number().default(0),
+  sgstAmount: z.coerce.number().default(0),
+  igstAmount: z.coerce.number().default(0),
   reason: z.enum(["Damage", "Wrong Item", "Quality Issue", "Excess Quantity"]).default("Damage"),
+  notes: z.string().default("").optional(),
+  returnDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
   status: z.enum(["Initiated", "Sent", "Credited"]).default("Initiated"),
-  returnDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional(),
 });
 
-export type MaterialRequest = typeof materialRequestsTable.$inferSelect;
-export type PurchaseRequest = typeof purchaseRequestsTable.$inferSelect;
-export type Rfq = typeof rfqTable.$inferSelect;
-export type RfqBid = typeof rfqBidsTable.$inferSelect;
-export type FlexPurchaseOrder = typeof flexPurchaseOrdersTable.$inferSelect;
-export type FlexPOItem = typeof flexPOItemsTable.$inferSelect;
-export type GoodsReceipt = typeof goodsReceiptsTable.$inferSelect;
-export type GrnItem = typeof grnItemsTable.$inferSelect;
-export type PurchaseInvoice = typeof purchaseInvoicesTable.$inferSelect;
-export type PurchaseReturn = typeof purchaseReturnsTable.$inferSelect;
+export type MaterialRequest = mongoose.InferSchemaType<typeof MaterialRequestSchema>;
+export type PurchaseRequest = mongoose.InferSchemaType<typeof PurchaseRequestSchema>;
+export type Rfq = mongoose.InferSchemaType<typeof RfqSchema>;
+export type RfqBid = mongoose.InferSchemaType<typeof RfqBidSchema>;
+export type FlexPurchaseOrder = mongoose.InferSchemaType<typeof FlexPurchaseOrderSchema>;
+export type FlexPOItem = mongoose.InferSchemaType<typeof FlexPOItemSchema>;
+export type GoodsReceipt = mongoose.InferSchemaType<typeof GoodsReceiptSchema>;
+export type GrnItem = mongoose.InferSchemaType<typeof GrnItemSchema>;
+export type PurchaseInvoice = mongoose.InferSchemaType<typeof PurchaseInvoiceSchema>;
+export type PurchaseReturn = mongoose.InferSchemaType<typeof PurchaseReturnSchema>;

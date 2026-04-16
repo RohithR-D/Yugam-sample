@@ -1,34 +1,48 @@
-import { pgTable, serial, varchar, numeric, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const clientsTable = pgTable("clients", {
-  id: serial("id").primaryKey(),
-  companyName: varchar("company_name", { length: 255 }).notNull(),
-  contactName: varchar("contact_name", { length: 255 }).notNull(),
-  industry: varchar("industry", { length: 100 }).notNull().default("General"),
-  status: varchar("status", { length: 50 }).notNull().default("Lead"),
-  pipelineStatus: varchar("pipeline_status", { length: 50 }).notNull().default("Lead"),
-  dealValue: numeric("deal_value", { precision: 12, scale: 2 }).notNull().default("0"),
-  gstin: varchar("gstin", { length: 15 }),
-  pan: varchar("pan", { length: 10 }),
-  tan: varchar("tan", { length: 10 }),
-  gstTreatment: varchar("gst_treatment", { length: 30 }).notNull().default("Unregistered"),
-  creditLimit: numeric("credit_limit", { precision: 12, scale: 2 }),
-  paymentTermsDefault: varchar("payment_terms_default", { length: 100 }),
-  paymentDueDaysDefault: integer("payment_due_days_default"),
-  currencyDefault: varchar("currency_default", { length: 3 }).notNull().default("INR"),
-  stateCode: varchar("state_code", { length: 2 }),
-  createdAt: timestamp("created_at").defaultNow(),
+const ClientSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  companyName: { type: String, required: true },
+  contactName: { type: String, required: true },
+  industry: { type: String, default: "General" },
+  status: { type: String, default: "Lead" },
+  pipelineStatus: { type: String, default: "Lead" },
+  dealValue: { type: Number, default: 0 },
+  gstin: { type: String },
+  pan: { type: String },
+  tan: { type: String },
+  gstTreatment: { type: String, default: "Unregistered" },
+  creditLimit: { type: Number, default: 0 },
+  paymentTermsDefault: { type: String },
+  paymentDueDaysDefault: { type: Number },
+  currencyDefault: { type: String, default: "INR" },
+  stateCode: { type: String },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertClientSchema = createInsertSchema(clientsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(ClientSchema, "clients");
+
+export const clientsTable = mongoose.models.Client || mongoose.model("Client", ClientSchema);
+
+export const insertClientSchema = z.object({
+  companyName: z.string().min(1),
+  contactName: z.string().min(1),
+  industry: z.string().default("General"),
+  status: z.string().default("Lead"),
   pipelineStatus: z.enum(["Lead", "Contacted", "Proposal", "Won", "Lost"]).default("Lead"),
+  dealValue: z.coerce.number().default(0),
+  gstin: z.string().optional(),
+  pan: z.string().optional(),
+  tan: z.string().optional(),
   gstTreatment: z.enum(["Registered", "Unregistered", "Consumer", "Composition", "SEZ", "Overseas", "UIN Holders"]).default("Unregistered"),
+  creditLimit: z.coerce.number().optional(),
+  paymentTermsDefault: z.string().optional(),
+  paymentDueDaysDefault: z.coerce.number().optional(),
+  currencyDefault: z.string().default("INR"),
+  stateCode: z.string().optional(),
 });
 
 export type InsertClient = z.infer<typeof insertClientSchema>;
-export type Client = typeof clientsTable.$inferSelect;
+export type Client = mongoose.InferSchemaType<typeof ClientSchema>;

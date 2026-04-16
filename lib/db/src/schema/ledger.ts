@@ -1,108 +1,139 @@
-import { pgTable, serial, varchar, numeric, integer, text, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const chartOfAccountsTable = pgTable("chart_of_accounts", {
-  id: serial("id").primaryKey(),
-  accountCode: varchar("account_code", { length: 20 }).notNull(),
-  accountName: varchar("account_name", { length: 255 }).notNull(),
-  accountType: varchar("account_type", { length: 50 }).notNull().default("Asset"),
-  currentBalance: numeric("current_balance", { precision: 16, scale: 2 }).notNull().default("0"),
-  parentId: integer("parent_id").references((): any => chartOfAccountsTable.id),
-  description: text("description").notNull().default(""),
-  isActive: varchar("is_active", { length: 10 }).notNull().default("Yes"),
-  createdAt: timestamp("created_at").defaultNow(),
+const ChartOfAccountsSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  accountCode: { type: String, required: true },
+  accountName: { type: String, required: true },
+  accountType: { type: String, default: "Asset" },
+  currentBalance: { type: Number, default: 0 },
+  parentId: { type: Number },
+  description: { type: String, default: "" },
+  isActive: { type: String, default: "Yes" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertChartOfAccountsSchema = createInsertSchema(chartOfAccountsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  accountType: z.enum(["Asset", "Liability", "Equity", "Revenue", "Expense"]),
+autoIncrementId(ChartOfAccountsSchema, "chart_of_accounts");
+export const chartOfAccountsTable = mongoose.models.ChartOfAccount || mongoose.model("ChartOfAccount", ChartOfAccountsSchema);
+
+export const insertChartOfAccountsSchema = z.object({
+  accountCode: z.string().min(1),
+  accountName: z.string().min(1),
+  accountType: z.enum(["Asset", "Liability", "Equity", "Revenue", "Expense"]).default("Asset"),
+  currentBalance: z.coerce.number().default(0),
+  parentId: z.coerce.number().optional(),
+  description: z.string().default("").optional(),
+  isActive: z.string().default("Yes").optional(),
 });
 
-export const journalEntriesTable = pgTable("journal_entries", {
-  id: serial("id").primaryKey(),
-  entryDate: timestamp("entry_date").notNull(),
-  reference: varchar("reference", { length: 100 }).notNull().default(""),
-  description: text("description").notNull().default(""),
-  totalDebit: numeric("total_debit", { precision: 16, scale: 2 }).notNull().default("0"),
-  totalCredit: numeric("total_credit", { precision: 16, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("Draft"),
-  createdAt: timestamp("created_at").defaultNow(),
+const JournalEntrySchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  entryDate: { type: Date, required: true },
+  reference: { type: String, default: "" },
+  description: { type: String, default: "" },
+  totalDebit: { type: Number, default: 0 },
+  totalCredit: { type: Number, default: 0 },
+  status: { type: String, default: "Draft" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertJournalEntrySchema = createInsertSchema(journalEntriesTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(JournalEntrySchema, "journal_entries");
+export const journalEntriesTable = mongoose.models.JournalEntry || mongoose.model("JournalEntry", JournalEntrySchema);
+
+export const insertJournalEntrySchema = z.object({
   entryDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  reference: z.string().default("").optional(),
+  description: z.string().default("").optional(),
+  totalDebit: z.coerce.number().default(0),
+  totalCredit: z.coerce.number().default(0),
   status: z.enum(["Draft", "Posted"]).default("Draft"),
 });
 
-export const journalLinesTable = pgTable("journal_lines", {
-  id: serial("id").primaryKey(),
-  journalEntryId: integer("journal_entry_id").notNull().references(() => journalEntriesTable.id, { onDelete: "cascade" }),
-  accountId: integer("account_id").notNull().references(() => chartOfAccountsTable.id),
-  accountCode: varchar("account_code", { length: 20 }).notNull().default(""),
-  accountName: varchar("account_name", { length: 255 }).notNull().default(""),
-  debit: numeric("debit", { precision: 16, scale: 2 }).notNull().default("0"),
-  credit: numeric("credit", { precision: 16, scale: 2 }).notNull().default("0"),
-  memo: text("memo").notNull().default(""),
+const JournalLineSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  journalEntryId: { type: Number, required: true },
+  accountId: { type: Number, required: true },
+  accountCode: { type: String, default: "" },
+  accountName: { type: String, default: "" },
+  debit: { type: Number, default: 0 },
+  credit: { type: Number, default: 0 },
+  memo: { type: String, default: "" },
 });
 
-export const insertJournalLineSchema = createInsertSchema(journalLinesTable).omit({ id: true });
+autoIncrementId(JournalLineSchema, "journal_lines");
+export const journalLinesTable = mongoose.models.JournalLine || mongoose.model("JournalLine", JournalLineSchema);
 
-export const accountsPayableTable = pgTable("accounts_payable", {
-  id: serial("id").primaryKey(),
-  vendorName: varchar("vendor_name", { length: 255 }).notNull(),
-  billNumber: varchar("bill_number", { length: 100 }).notNull().default(""),
-  billDate: timestamp("bill_date").notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  amount: numeric("amount", { precision: 16, scale: 2 }).notNull().default("0"),
-  paidAmount: numeric("paid_amount", { precision: 16, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("Pending"),
-  entryType: varchar("entry_type", { length: 50 }).notNull().default("Bill"),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+export const insertJournalLineSchema = z.object({
+  journalEntryId: z.coerce.number(),
+  accountId: z.coerce.number(),
+  accountCode: z.string().default("").optional(),
+  accountName: z.string().default("").optional(),
+  debit: z.coerce.number().default(0),
+  credit: z.coerce.number().default(0),
+  memo: z.string().default("").optional(),
 });
 
-export const insertAPSchema = createInsertSchema(accountsPayableTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+const AccountsPayableSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  vendorName: { type: String, required: true },
+  billNumber: { type: String, default: "" },
+  billDate: { type: Date, required: true },
+  dueDate: { type: Date, required: true },
+  amount: { type: Number, default: 0 },
+  paidAmount: { type: Number, default: 0 },
+  status: { type: String, default: "Pending" },
+  entryType: { type: String, default: "Bill" },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
+});
+
+autoIncrementId(AccountsPayableSchema, "accounts_payable");
+export const accountsPayableTable = mongoose.models.AccountsPayable || mongoose.model("AccountsPayable", AccountsPayableSchema);
+
+export const insertAPSchema = z.object({
+  vendorName: z.string().min(1),
+  billNumber: z.string().default("").optional(),
   billDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   dueDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  amount: z.coerce.number().default(0),
+  paidAmount: z.coerce.number().default(0),
   status: z.enum(["Pending", "Partial", "Paid", "Overdue"]).default("Pending"),
   entryType: z.enum(["Bill", "Debit Note"]).default("Bill"),
+  notes: z.string().default("").optional(),
 });
 
-export const accountsReceivableTable = pgTable("accounts_receivable", {
-  id: serial("id").primaryKey(),
-  clientName: varchar("client_name", { length: 255 }).notNull(),
-  invoiceNumber: varchar("invoice_number", { length: 100 }).notNull().default(""),
-  invoiceDate: timestamp("invoice_date").notNull(),
-  dueDate: timestamp("due_date").notNull(),
-  amount: numeric("amount", { precision: 16, scale: 2 }).notNull().default("0"),
-  receivedAmount: numeric("received_amount", { precision: 16, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("Pending"),
-  entryType: varchar("entry_type", { length: 50 }).notNull().default("Invoice"),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const AccountsReceivableSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  clientName: { type: String, required: true },
+  invoiceNumber: { type: String, default: "" },
+  invoiceDate: { type: Date, required: true },
+  dueDate: { type: Date, required: true },
+  amount: { type: Number, default: 0 },
+  receivedAmount: { type: Number, default: 0 },
+  status: { type: String, default: "Pending" },
+  entryType: { type: String, default: "Invoice" },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertARSchema = createInsertSchema(accountsReceivableTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(AccountsReceivableSchema, "accounts_receivable");
+export const accountsReceivableTable = mongoose.models.AccountsReceivable || mongoose.model("AccountsReceivable", AccountsReceivableSchema);
+
+export const insertARSchema = z.object({
+  clientName: z.string().min(1),
+  invoiceNumber: z.string().default("").optional(),
   invoiceDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   dueDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  amount: z.coerce.number().default(0),
+  receivedAmount: z.coerce.number().default(0),
   status: z.enum(["Pending", "Partial", "Received", "Overdue"]).default("Pending"),
   entryType: z.enum(["Invoice", "Credit Note"]).default("Invoice"),
+  notes: z.string().default("").optional(),
 });
 
-export type ChartOfAccount = typeof chartOfAccountsTable.$inferSelect;
-export type JournalEntry = typeof journalEntriesTable.$inferSelect;
-export type JournalLine = typeof journalLinesTable.$inferSelect;
-export type AccountPayable = typeof accountsPayableTable.$inferSelect;
-export type AccountReceivable = typeof accountsReceivableTable.$inferSelect;
+export type ChartOfAccount = mongoose.InferSchemaType<typeof ChartOfAccountsSchema>;
+export type JournalEntry = mongoose.InferSchemaType<typeof JournalEntrySchema>;
+export type JournalLine = mongoose.InferSchemaType<typeof JournalLineSchema>;
+export type AccountPayable = mongoose.InferSchemaType<typeof AccountsPayableSchema>;
+export type AccountReceivable = mongoose.InferSchemaType<typeof AccountsReceivableSchema>;

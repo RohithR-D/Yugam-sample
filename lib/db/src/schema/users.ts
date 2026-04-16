@@ -1,24 +1,28 @@
-import { pgTable, serial, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const usersTable = pgTable("users", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull().unique(),
-  passwordHash: text("password_hash"),
-  role: varchar("role", { length: 50 }).notNull().default("Employee"),
-  department: varchar("department", { length: 100 }),
-  lastLogin: timestamp("last_login").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
+const UserSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  passwordHash: { type: String },
+  role: { type: String, default: "Employee" },
+  department: { type: String },
+  lastLogin: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertUserSchema = createInsertSchema(usersTable).omit({
-  id: true,
-  passwordHash: true,
-  lastLogin: true,
-  createdAt: true,
+autoIncrementId(UserSchema, "users");
+
+export const usersTable = mongoose.models.User || mongoose.model("User", UserSchema);
+
+export const insertUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  role: z.enum(["Employee", "Admin", "Manager"]).default("Employee"),
+  department: z.string().optional(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof usersTable.$inferSelect;
+export type User = mongoose.InferSchemaType<typeof UserSchema>;

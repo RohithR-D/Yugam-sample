@@ -1,8 +1,8 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import router from "./routes";
-import { logger } from "./lib/logger";
+import router from "./features";
+import { logger } from "./shared/logger";
 
 const app: Express = express();
 

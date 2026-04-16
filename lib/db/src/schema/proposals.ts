@@ -1,45 +1,52 @@
-import { pgTable, serial, integer, varchar, numeric, text, jsonb, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { clientsTable } from "./clients";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const proposalsTable = pgTable("proposals", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clientsTable.id),
-  title: varchar("title", { length: 500 }).notNull(),
-  quoteNumber: varchar("quote_number", { length: 100 }).notNull().default(""),
-  revision: varchar("revision", { length: 20 }).notNull().default("R0"),
-  status: varchar("status", { length: 50 }).notNull().default("Draft"),
-  validFrom: timestamp("valid_from"),
-  validTo: timestamp("valid_to"),
-  projectLocation: varchar("project_location", { length: 500 }).notNull().default(""),
-  pocName: varchar("poc_name", { length: 255 }).notNull().default(""),
-  pocContact: varchar("poc_contact", { length: 255 }).notNull().default(""),
-  scopeOfWork: text("scope_of_work").notNull().default(""),
-  inclusions: text("inclusions").notNull().default(""),
-  exclusions: text("exclusions").notNull().default(""),
-  totalEstimatedHours: numeric("total_estimated_hours", { precision: 10, scale: 1 }).notNull().default("0"),
-  grandTotal: numeric("grand_total", { precision: 14, scale: 2 }).notNull().default("0"),
-  proposalData: jsonb("proposal_data").notNull().default("[]"),
-  boqData: jsonb("boq_data").notNull().default("[]"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+const ProposalSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  clientId: { type: Number },
+  title: { type: String, required: true },
+  quoteNumber: { type: String, default: "" },
+  revision: { type: String, default: "R0" },
+  status: { type: String, default: "Draft" },
+  validFrom: { type: Date },
+  validTo: { type: Date },
+  projectLocation: { type: String, default: "" },
+  pocName: { type: String, default: "" },
+  pocContact: { type: String, default: "" },
+  scopeOfWork: { type: String, default: "" },
+  inclusions: { type: String, default: "" },
+  exclusions: { type: String, default: "" },
+  totalEstimatedHours: { type: Number, default: 0 },
+  grandTotal: { type: Number, default: 0 },
+  proposalData: { type: mongoose.Schema.Types.Mixed, default: [] },
+  boqData: { type: mongoose.Schema.Types.Mixed, default: [] },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
-export const insertProposalSchema = createInsertSchema(proposalsTable).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-}).extend({
+autoIncrementId(ProposalSchema, "proposals");
+export const proposalsTable = mongoose.models.Proposal || mongoose.model("Proposal", ProposalSchema);
+
+export const insertProposalSchema = z.object({
+  clientId: z.coerce.number().nullable().optional(),
+  title: z.string().min(1),
+  quoteNumber: z.string().default("").optional(),
+  revision: z.string().default("R0").optional(),
   status: z.enum(["Draft", "Sent", "Accepted", "Rejected", "Revised"]).default("Draft"),
-  clientId: z.number().nullable().optional(),
-  proposalData: z.any().optional(),
-  boqData: z.any().optional(),
-  totalEstimatedHours: z.union([z.string(), z.number()]).optional().transform((v) => String(v ?? "0")),
-  grandTotal: z.union([z.string(), z.number()]).optional().transform((v) => String(v ?? "0")),
   validFrom: z.union([z.string(), z.date()]).nullable().optional().transform((v) => (typeof v === "string" && v ? new Date(v) : v ?? null)),
   validTo: z.union([z.string(), z.date()]).nullable().optional().transform((v) => (typeof v === "string" && v ? new Date(v) : v ?? null)),
+  projectLocation: z.string().default("").optional(),
+  pocName: z.string().default("").optional(),
+  pocContact: z.string().default("").optional(),
+  scopeOfWork: z.string().default("").optional(),
+  inclusions: z.string().default("").optional(),
+  exclusions: z.string().default("").optional(),
+  totalEstimatedHours: z.coerce.number().default(0).optional(),
+  grandTotal: z.coerce.number().default(0).optional(),
+  proposalData: z.any().optional(),
+  boqData: z.any().optional(),
 });
 
 export type InsertProposal = z.infer<typeof insertProposalSchema>;
-export type Proposal = typeof proposalsTable.$inferSelect;
+export type Proposal = mongoose.InferSchemaType<typeof ProposalSchema>;

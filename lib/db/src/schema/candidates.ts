@@ -1,23 +1,26 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
 
-export const candidatesTable = pgTable("candidates", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  roleApplied: varchar("role_applied", { length: 255 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("Applied"),
-  appliedDate: timestamp("applied_date").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
+import mongoose from "mongoose";
+import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
+
+const CandidateSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  name: { type: String, required: true },
+  roleApplied: { type: String, required: true },
+  status: { type: String, default: "Applied" },
+  appliedDate: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertCandidateSchema = createInsertSchema(candidatesTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  status: z.enum(["Applied", "Interviewing", "Offered", "Rejected"]),
+autoIncrementId(CandidateSchema, "candidates");
+export const candidatesTable = mongoose.models.Candidate || mongoose.model("Candidate", CandidateSchema);
+
+export const insertCandidateSchema = z.object({
+  name: z.string().min(1),
+  roleApplied: z.string().min(1),
+  status: z.enum(["Applied", "Interviewing", "Offered", "Rejected"]).default("Applied"),
   appliedDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
 });
 
 export type InsertCandidate = z.infer<typeof insertCandidateSchema>;
-export type Candidate = typeof candidatesTable.$inferSelect;
+export type Candidate = mongoose.InferSchemaType<typeof CandidateSchema>;

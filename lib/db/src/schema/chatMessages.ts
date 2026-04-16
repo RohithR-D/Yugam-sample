@@ -1,22 +1,26 @@
-import { pgTable, serial, integer, text, timestamp, varchar } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const chatMessagesTable = pgTable("chat_messages", {
-  id: serial("id").primaryKey(),
-  threadType: varchar("thread_type", { length: 30 }).notNull().default("Internal"),
-  employeeId: integer("employee_id"),
-  senderName: varchar("sender_name", { length: 255 }).notNull().default(""),
-  messageBody: text("message_body").notNull().default(""),
-  timestamp: timestamp("timestamp").defaultNow(),
+const ChatMessageSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  threadType: { type: String, default: "Internal" },
+  employeeId: { type: Number },
+  senderName: { type: String, default: "" },
+  messageBody: { type: String, default: "" },
+  timestamp: { type: Date, default: Date.now },
 });
 
-export const insertChatMessageSchema = createInsertSchema(chatMessagesTable).omit({
-  id: true,
-}).extend({
+autoIncrementId(ChatMessageSchema, "chat_messages");
+export const chatMessagesTable = mongoose.models.ChatMessage || mongoose.model("ChatMessage", ChatMessageSchema);
+
+export const insertChatMessageSchema = z.object({
   threadType: z.enum(["Internal", "Client", "Supplier"]).default("Internal"),
+  employeeId: z.coerce.number().optional(),
+  senderName: z.string().default("").optional(),
+  messageBody: z.string().default("").optional(),
   timestamp: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
 });
 
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
-export type ChatMessage = typeof chatMessagesTable.$inferSelect;
+export type ChatMessage = mongoose.InferSchemaType<typeof ChatMessageSchema>;

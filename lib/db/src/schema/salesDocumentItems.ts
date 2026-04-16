@@ -1,23 +1,32 @@
-import { pgTable, serial, integer, varchar, numeric, text } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { salesDocumentsTable } from "./salesDocuments";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const salesDocumentItemsTable = pgTable("legacy_sales_document_items", {
-  id: serial("id").primaryKey(),
-  documentId: integer("document_id").references(() => salesDocumentsTable.id, { onDelete: "cascade" }).notNull(),
-  description: text("description").notNull().default(""),
-  hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
-  qty: numeric("qty", { precision: 12, scale: 2 }).notNull().default("1"),
-  rate: numeric("rate", { precision: 14, scale: 2 }).notNull().default("0"),
-  cgstPercentage: numeric("cgst_percentage", { precision: 5, scale: 2 }).notNull().default("9"),
-  sgstPercentage: numeric("sgst_percentage", { precision: 5, scale: 2 }).notNull().default("9"),
-  lineTotal: numeric("line_total", { precision: 14, scale: 2 }).notNull().default("0"),
+const SalesDocumentItemSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  documentId: { type: Number, required: true },
+  description: { type: String, default: "" },
+  hsnSac: { type: String, default: "" },
+  qty: { type: Number, default: 1 },
+  rate: { type: Number, default: 0 },
+  cgstPercentage: { type: Number, default: 9 },
+  sgstPercentage: { type: Number, default: 9 },
+  lineTotal: { type: Number, default: 0 },
 });
 
-export const insertSalesDocumentItemSchema = createInsertSchema(salesDocumentItemsTable).omit({
-  id: true,
+autoIncrementId(SalesDocumentItemSchema, "legacy_sales_document_items");
+export const salesDocumentItemsTable = mongoose.models.SalesDocumentItem || mongoose.model("SalesDocumentItem", SalesDocumentItemSchema);
+
+export const insertSalesDocumentItemSchema = z.object({
+  documentId: z.coerce.number(),
+  description: z.string().default("").optional(),
+  hsnSac: z.string().default("").optional(),
+  qty: z.coerce.number().default(1),
+  rate: z.coerce.number().default(0),
+  cgstPercentage: z.coerce.number().default(9),
+  sgstPercentage: z.coerce.number().default(9),
+  lineTotal: z.coerce.number().default(0),
 });
 
 export type InsertSalesDocumentItem = z.infer<typeof insertSalesDocumentItemSchema>;
-export type SalesDocumentItem = typeof salesDocumentItemsTable.$inferSelect;
+export type SalesDocumentItem = mongoose.InferSchemaType<typeof SalesDocumentItemSchema>;

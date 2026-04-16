@@ -1,23 +1,29 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const visionGeneratedReportsTable = pgTable("vision_generated_reports", {
-  id: serial("id").primaryKey(),
-  reportName: varchar("report_name", { length: 300 }).notNull(),
-  reportType: varchar("report_type", { length: 100 }).notNull(),
-  dateFrom: timestamp("date_from").notNull(),
-  dateTo: timestamp("date_to").notNull(),
-  format: varchar("format", { length: 10 }).notNull().default("PDF"),
-  generatedBy: varchar("generated_by", { length: 200 }).notNull().default("Admin"),
-  createdAt: timestamp("created_at").defaultNow(),
+const VisionGeneratedReportSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  reportName: { type: String, required: true },
+  reportType: { type: String, required: true },
+  dateFrom: { type: Date, required: true },
+  dateTo: { type: Date, required: true },
+  format: { type: String, default: "PDF" },
+  generatedBy: { type: String, default: "Admin" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertVisionReportSchema = createInsertSchema(visionGeneratedReportsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(VisionGeneratedReportSchema, "vision_generated_reports");
+export const visionGeneratedReportsTable = mongoose.models.VisionGeneratedReport || mongoose.model("VisionGeneratedReport", VisionGeneratedReportSchema);
+
+export const insertVisionReportSchema = z.object({
+  reportName: z.string().min(1),
+  reportType: z.string().min(1),
   dateFrom: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   dateTo: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   format: z.enum(["PDF", "XLS"]).default("PDF"),
+  generatedBy: z.string().default("Admin").optional(),
 });
+
+export type InsertVisionReport = z.infer<typeof insertVisionReportSchema>;
+export type VisionGeneratedReport = mongoose.InferSchemaType<typeof VisionGeneratedReportSchema>;

@@ -1,25 +1,29 @@
-import { pgTable, serial, varchar, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { clientsTable } from "./clients";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
+import { clientsTable } from "./clients.js";
 
-export const contactsTable = pgTable("contacts", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 50 }).notNull().default(""),
-  contactType: varchar("contact_type", { length: 50 }).notNull().default("Client Employee"),
-  clientId: integer("client_id").references(() => clientsTable.id),
-  createdAt: timestamp("created_at").defaultNow(),
+const ContactSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  phone: { type: String, default: "" },
+  contactType: { type: String, default: "Client Employee" },
+  clientId: { type: Number, ref: "Client", required: false },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertContactSchema = createInsertSchema(contactsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(ContactSchema, "contacts");
+
+export const contactsTable = mongoose.models.Contact || mongoose.model("Contact", ContactSchema);
+
+export const insertContactSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().default(""),
   contactType: z.enum(["Client Employee", "Vendor", "Agent"]).default("Client Employee"),
-  clientId: z.number().nullable().optional(),
+  clientId: z.coerce.number().nullable().optional(),
 });
 
 export type InsertContact = z.infer<typeof insertContactSchema>;
-export type Contact = typeof contactsTable.$inferSelect;
+export type Contact = mongoose.InferSchemaType<typeof ContactSchema>;

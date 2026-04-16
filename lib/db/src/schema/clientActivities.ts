@@ -1,22 +1,25 @@
-import { pgTable, serial, integer, varchar, text, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { clientsTable } from "./clients";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
+import { clientsTable } from "./clients.js";
 
-export const clientActivitiesTable = pgTable("client_activities", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").notNull().references(() => clientsTable.id),
-  activityType: varchar("activity_type", { length: 50 }).notNull(),
-  notes: text("notes").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const ClientActivitySchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  clientId: { type: Number, ref: "Client", required: true },
+  activityType: { type: String, required: true },
+  notes: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertClientActivitySchema = createInsertSchema(clientActivitiesTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(ClientActivitySchema, "client_activities");
+
+export const clientActivitiesTable = mongoose.models.ClientActivity || mongoose.model("ClientActivity", ClientActivitySchema);
+
+export const insertClientActivitySchema = z.object({
+  clientId: z.coerce.number(),
   activityType: z.enum(["Call", "Email", "Meeting", "Note"]),
+  notes: z.string().default(""),
 });
 
 export type InsertClientActivity = z.infer<typeof insertClientActivitySchema>;
-export type ClientActivity = typeof clientActivitiesTable.$inferSelect;
+export type ClientActivity = mongoose.InferSchemaType<typeof ClientActivitySchema>;

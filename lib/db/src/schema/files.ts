@@ -1,23 +1,27 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const filesTable = pgTable("files", {
-  id: serial("id").primaryKey(),
-  fileName: varchar("file_name", { length: 500 }).notNull(),
-  folder: varchar("folder", { length: 200 }).notNull(),
-  size: varchar("size", { length: 50 }).notNull(),
-  uploadedBy: varchar("uploaded_by", { length: 300 }).notNull(),
-  uploadDate: timestamp("upload_date").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+const FileSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  fileName: { type: String, required: true },
+  folder: { type: String, required: true },
+  size: { type: String, required: true },
+  uploadedBy: { type: String, required: true },
+  uploadDate: { type: Date, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertFileSchema = createInsertSchema(filesTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(FileSchema, "files");
+export const filesTable = mongoose.models.File || mongoose.model("File", FileSchema);
+
+export const insertFileSchema = z.object({
+  fileName: z.string().min(1),
+  folder: z.string().min(1),
+  size: z.string().min(1),
+  uploadedBy: z.string().min(1),
   uploadDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
 });
 
 export type InsertFile = z.infer<typeof insertFileSchema>;
-export type FileRecord = typeof filesTable.$inferSelect;
+export type FileRecord = mongoose.InferSchemaType<typeof FileSchema>;

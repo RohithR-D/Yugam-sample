@@ -1,25 +1,27 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const communicationsTable = pgTable("communications", {
-  id: serial("id").primaryKey(),
-  recipientName: varchar("recipient_name", { length: 255 }).notNull(),
-  subject: varchar("subject", { length: 500 }).notNull(),
-  type: varchar("type", { length: 50 }).notNull().default("Email"),
-  status: varchar("status", { length: 50 }).notNull().default("Sent"),
-  sentAt: timestamp("sent_at").defaultNow(),
-  createdAt: timestamp("created_at").defaultNow(),
+const CommunicationSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  recipientName: { type: String, required: true },
+  subject: { type: String, required: true },
+  type: { type: String, default: "Email" },
+  status: { type: String, default: "Sent" },
+  sentAt: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertCommunicationSchema = createInsertSchema(communicationsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  type: z.enum(["Email", "SMS", "Call"]),
-  status: z.enum(["Sent", "Delivered", "Failed"]),
+autoIncrementId(CommunicationSchema, "communications");
+export const communicationsTable = mongoose.models.Communication || mongoose.model("Communication", CommunicationSchema);
+
+export const insertCommunicationSchema = z.object({
+  recipientName: z.string().min(1),
+  subject: z.string().min(1),
+  type: z.enum(["Email", "SMS", "Call"]).default("Email"),
+  status: z.enum(["Sent", "Delivered", "Failed"]).default("Sent"),
   sentAt: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
 });
 
 export type InsertCommunication = z.infer<typeof insertCommunicationSchema>;
-export type Communication = typeof communicationsTable.$inferSelect;
+export type Communication = mongoose.InferSchemaType<typeof CommunicationSchema>;

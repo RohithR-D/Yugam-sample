@@ -1,0 +1,50 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run MongoDB Integration Tests",
+			"type": "shell",
+			"command": "npm test -- --grep='MongoDB Integration'",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run MongoDB Integration Tests",
+			"type": "shell",
+			"command": "npm test -- --grep='MongoDB Integration'",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run MongoDB Integration Tests",
+			"type": "shell",
+			"command": "npm test -- --grep='MongoDB Integration'",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run MongoDB Integration Tests",
+			"type": "shell",
+			"command": "npm test -- --grep='MongoDB Integration'",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		},
+		{
+			"label": "Run MongoDB Integration Tests",
+			"type": "shell",
+			"command": "npm test -- --grep='MongoDB Integration'",
+			"args": [],
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "test"
+		}
+	]
+}

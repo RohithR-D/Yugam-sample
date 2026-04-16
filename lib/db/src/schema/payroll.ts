@@ -1,29 +1,31 @@
-import { pgTable, serial, varchar, numeric, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { employeesTable } from "./employees";
-import { journalEntriesTable } from "./ledger";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const payrollTable = pgTable("payroll", {
-  id: serial("id").primaryKey(),
-  employeeId: integer("employee_id").references(() => employeesTable.id),
-  employeeName: varchar("employee_name", { length: 255 }).notNull(),
-  payPeriod: varchar("pay_period", { length: 100 }).notNull(),
-  grossPay: numeric("gross_pay", { precision: 12, scale: 2 }).notNull().default("0"),
-  deductions: numeric("deductions", { precision: 12, scale: 2 }).notNull().default("0"),
-  netPay: numeric("net_pay", { precision: 12, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("Processing"),
-  journalEntryId: integer("journal_entry_id").references(() => journalEntriesTable.id),
-  createdAt: timestamp("created_at").defaultNow(),
+const PayrollSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  employeeId: { type: Number },
+  employeeName: { type: String, required: true },
+  payPeriod: { type: String, required: true },
+  grossPay: { type: Number, default: 0 },
+  deductions: { type: Number, default: 0 },
+  netPay: { type: Number, default: 0 },
+  status: { type: String, default: "Processing" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertPayrollSchema = createInsertSchema(payrollTable).omit({
-  id: true,
-  createdAt: true,
-  journalEntryId: true,
-}).extend({
-  status: z.enum(["Processing", "Processed", "Paid"]),
+autoIncrementId(PayrollSchema, "payroll");
+export const payrollTable = mongoose.models.Payroll || mongoose.model("Payroll", PayrollSchema);
+
+export const insertPayrollSchema = z.object({
+  employeeId: z.coerce.number().optional(),
+  employeeName: z.string().min(1),
+  payPeriod: z.string().min(1),
+  grossPay: z.coerce.number().default(0),
+  deductions: z.coerce.number().default(0),
+  netPay: z.coerce.number().default(0),
+  status: z.enum(["Processing", "Processed", "Paid"]).default("Processing"),
 });
 
 export type InsertPayroll = z.infer<typeof insertPayrollSchema>;
-export type Payroll = typeof payrollTable.$inferSelect;
+export type Payroll = mongoose.InferSchemaType<typeof PayrollSchema>;

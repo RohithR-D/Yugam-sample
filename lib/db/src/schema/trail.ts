@@ -1,59 +1,61 @@
-import { pgTable, serial, varchar, numeric, text, timestamp, integer } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { journalEntriesTable } from "./ledger";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const trailClaimsTable = pgTable("trail_claims", {
-  id: serial("id").primaryKey(),
-  claimId: varchar("claim_id", { length: 50 }).notNull(),
-  employeeName: varchar("employee_name", { length: 255 }).notNull(),
-  date: timestamp("date").notNull(),
-  category: varchar("category", { length: 100 }).notNull().default("Travel"),
-  claimType: varchar("claim_type", { length: 50 }).notNull().default("Standard Receipt"),
-  amount: numeric("amount", { precision: 14, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("Pending"),
-  description: text("description").notNull().default(""),
-  distance: numeric("distance", { precision: 10, scale: 2 }),
-  ratePerKm: numeric("rate_per_km", { precision: 10, scale: 2 }),
-  numDays: numeric("num_days", { precision: 5, scale: 0 }),
-  dailyRate: numeric("daily_rate", { precision: 10, scale: 2 }),
-  ledgerJournalId: integer("ledger_journal_id").references(() => journalEntriesTable.id),
-  createdAt: timestamp("created_at").defaultNow(),
+const TrailClaimSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  claimId: { type: String, default: "" },
+  employeeName: { type: String, required: true },
+  date: { type: Date, required: true },
+  category: { type: String, default: "Travel" },
+  claimType: { type: String, default: "Standard Receipt" },
+  amount: { type: Number, default: 0 },
+  status: { type: String, default: "Pending" },
+  description: { type: String, default: "" },
+  distance: { type: Number },
+  ratePerKm: { type: Number },
+  numDays: { type: Number },
+  dailyRate: { type: Number },
+  ledgerJournalId: { type: Number },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertTrailClaimSchema = createInsertSchema(trailClaimsTable).omit({
-  id: true,
-  createdAt: true,
-  claimId: true,
-  ledgerJournalId: true,
-}).extend({
+autoIncrementId(TrailClaimSchema, "trail_claims");
+export const trailClaimsTable = mongoose.models.TrailClaim || mongoose.model("TrailClaim", TrailClaimSchema);
+
+export const insertTrailClaimSchema = z.object({
+  employeeName: z.string().min(1),
   date: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
   category: z.enum(["Travel", "Fuel", "Meals", "Misc", "Transport"]),
   claimType: z.enum(["Standard Receipt", "Mileage/Fuel Claim", "Per Diem"]),
+  amount: z.coerce.number().default(0),
   status: z.enum(["Pending", "Approved", "Rejected", "Paid"]).default("Pending"),
-  distance: z.union([z.string(), z.number()]).optional().nullable(),
-  ratePerKm: z.union([z.string(), z.number()]).optional().nullable(),
-  numDays: z.union([z.string(), z.number()]).optional().nullable(),
-  dailyRate: z.union([z.string(), z.number()]).optional().nullable(),
+  description: z.string().default("").optional(),
+  distance: z.coerce.number().optional().nullable(),
+  ratePerKm: z.coerce.number().optional().nullable(),
+  numDays: z.coerce.number().optional().nullable(),
+  dailyRate: z.coerce.number().optional().nullable(),
 });
 
-export const pettyCashTable = pgTable("petty_cash", {
-  id: serial("id").primaryKey(),
-  date: timestamp("date").notNull(),
-  description: varchar("description", { length: 500 }).notNull(),
-  cashIn: numeric("cash_in", { precision: 14, scale: 2 }).notNull().default("0"),
-  cashOut: numeric("cash_out", { precision: 14, scale: 2 }).notNull().default("0"),
-  runningBalance: numeric("running_balance", { precision: 14, scale: 2 }).notNull().default("0"),
-  createdAt: timestamp("created_at").defaultNow(),
+const PettyCashSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  date: { type: Date, required: true },
+  description: { type: String, required: true },
+  cashIn: { type: Number, default: 0 },
+  cashOut: { type: Number, default: 0 },
+  runningBalance: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertPettyCashSchema = createInsertSchema(pettyCashTable).omit({
-  id: true,
-  createdAt: true,
-  runningBalance: true,
-}).extend({
+autoIncrementId(PettyCashSchema, "petty_cash");
+export const pettyCashTable = mongoose.models.PettyCash || mongoose.model("PettyCash", PettyCashSchema);
+
+export const insertPettyCashSchema = z.object({
   date: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
+  description: z.string().min(1),
+  cashIn: z.coerce.number().default(0),
+  cashOut: z.coerce.number().default(0),
 });
 
-export type TrailClaim = typeof trailClaimsTable.$inferSelect;
-export type PettyCash = typeof pettyCashTable.$inferSelect;
+export type TrailClaim = mongoose.InferSchemaType<typeof TrailClaimSchema>;
+export type PettyCash = mongoose.InferSchemaType<typeof PettyCashSchema>;

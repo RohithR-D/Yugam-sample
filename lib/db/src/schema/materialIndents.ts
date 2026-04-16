@@ -1,31 +1,38 @@
-import { pgTable, serial, integer, varchar, text, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
-import { inventoryCatalogTable } from "./inventoryCatalog";
 
-export const materialIndentsTable = pgTable("material_indents", {
-  id: serial("id").primaryKey(),
-  itemId: integer("item_id").references(() => inventoryCatalogTable.id).notNull(),
-  requestedQty: integer("requested_qty").notNull().default(1),
-  approvedQty: integer("approved_qty").notNull().default(0),
-  issuedFromLocationId: integer("issued_from_location_id"),
-  requestedBy: varchar("requested_by", { length: 255 }).notNull().default(""),
-  department: varchar("department", { length: 100 }).notNull().default(""),
-  purpose: text("purpose").notNull().default(""),
-  status: varchar("status", { length: 30 }).notNull().default("Pending"),
-  requestDate: timestamp("request_date").defaultNow(),
-  issueDate: timestamp("issue_date"),
-  createdAt: timestamp("created_at").defaultNow(),
+import mongoose from "mongoose";
+import { z } from "zod";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
+
+const MaterialIndentSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  itemId: { type: Number, required: true },
+  requestedQty: { type: Number, default: 1 },
+  approvedQty: { type: Number, default: 0 },
+  issuedFromLocationId: { type: Number },
+  requestedBy: { type: String, default: "" },
+  department: { type: String, default: "" },
+  purpose: { type: String, default: "" },
+  status: { type: String, default: "Pending" },
+  requestDate: { type: Date, default: Date.now },
+  issueDate: { type: Date },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertMaterialIndentSchema = createInsertSchema(materialIndentsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(MaterialIndentSchema, "material_indents");
+export const materialIndentsTable = mongoose.models.MaterialIndent || mongoose.model("MaterialIndent", MaterialIndentSchema);
+
+export const insertMaterialIndentSchema = z.object({
+  itemId: z.coerce.number(),
+  requestedQty: z.coerce.number().default(1),
+  approvedQty: z.coerce.number().default(0),
+  issuedFromLocationId: z.coerce.number().optional(),
+  requestedBy: z.string().default("").optional(),
+  department: z.string().default("").optional(),
+  purpose: z.string().default("").optional(),
   status: z.enum(["Pending", "Approved", "Issued", "Rejected"]).default("Pending"),
-  requestDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
-  issueDate: z.union([z.string(), z.date()]).optional().nullable().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  requestDate: z.union([z.string(), z.date()]).optional().transform((v: unknown) => (typeof v === "string" ? new Date(v) : v)),
+  issueDate: z.union([z.string(), z.date()]).optional().nullable().transform((v: unknown) => (typeof v === "string" ? new Date(v) : v)),
 });
 
 export type InsertMaterialIndent = z.infer<typeof insertMaterialIndentSchema>;
-export type MaterialIndent = typeof materialIndentsTable.$inferSelect;
+export type MaterialIndent = mongoose.InferSchemaType<typeof MaterialIndentSchema>;

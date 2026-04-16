@@ -1,29 +1,37 @@
-import { pgTable, serial, integer, varchar, numeric, text, timestamp, boolean } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { clientsTable } from "./clients";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const receiptsTable = pgTable("legacy_receipts", {
-  id: serial("id").primaryKey(),
-  clientId: integer("client_id").references(() => clientsTable.id),
-  clientName: varchar("client_name", { length: 255 }).notNull().default(""),
-  paymentDate: timestamp("payment_date").defaultNow(),
-  paymentNumber: varchar("payment_number", { length: 80 }).notNull().default(""),
-  amountReceived: numeric("amount_received", { precision: 14, scale: 2 }).notNull().default("0"),
-  bankCharges: numeric("bank_charges", { precision: 14, scale: 2 }).notNull().default("0"),
-  paymentMode: varchar("payment_mode", { length: 50 }).notNull().default("Bank Transfer"),
-  depositTo: varchar("deposit_to", { length: 100 }).notNull().default(""),
-  reference: text("reference").notNull().default(""),
-  taxDeducted: boolean("tax_deducted").notNull().default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+const ReceiptSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  clientId: { type: Number },
+  clientName: { type: String, default: "" },
+  paymentDate: { type: Date, default: Date.now },
+  paymentNumber: { type: String, default: "" },
+  amountReceived: { type: Number, default: 0 },
+  bankCharges: { type: Number, default: 0 },
+  paymentMode: { type: String, default: "Bank Transfer" },
+  depositTo: { type: String, default: "" },
+  reference: { type: String, default: "" },
+  taxDeducted: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertReceiptSchema = createInsertSchema(receiptsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(ReceiptSchema, "legacy_receipts");
+export const receiptsTable = mongoose.models.Receipt || mongoose.model("Receipt", ReceiptSchema);
+
+export const insertReceiptSchema = z.object({
+  clientId: z.coerce.number().optional(),
+  clientName: z.string().default("").optional(),
   paymentDate: z.union([z.string(), z.date()]).optional().transform((v) => (typeof v === "string" ? new Date(v) : v)),
+  paymentNumber: z.string().default("").optional(),
+  amountReceived: z.coerce.number().default(0),
+  bankCharges: z.coerce.number().default(0),
+  paymentMode: z.string().default("Bank Transfer").optional(),
+  depositTo: z.string().default("").optional(),
+  reference: z.string().default("").optional(),
+  taxDeducted: z.boolean().default(false).optional(),
 });
 
 export type InsertReceipt = z.infer<typeof insertReceiptSchema>;
-export type Receipt = typeof receiptsTable.$inferSelect;
+export type Receipt = mongoose.InferSchemaType<typeof ReceiptSchema>;

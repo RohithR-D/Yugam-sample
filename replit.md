@@ -19,7 +19,7 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
 **Core Technologies:**
 - **Backend:** Node.js, Express, TypeScript.
 - **Frontend:** React, Vite, Tailwind CSS.
-- **Database:** PostgreSQL with Drizzle ORM.
+- **Database:** MongoDB with Mongoose.
 - **Validation:** Zod.
 - **API Generation:** Orval, driven by OpenAPI.
 
@@ -33,9 +33,7 @@ The project is structured as a pnpm monorepo, facilitating efficient code sharin
 - Provides comprehensive RESTful APIs for all ERP modules.
 
 **Database Layer (`@workspace/db`):**
-- Employs Drizzle ORM with PostgreSQL, featuring a comprehensive schema for all ERP entities.
-- Drizzle Kit is used for schema migrations.
-- **46 formal FK constraints** enforce referential integrity across modules.
+- Employs Mongoose with MongoDB, featuring a comprehensive schema for all ERP entities.
 - **46 indexes** on all FK columns optimize query performance.
 - **Sales Module (Phase 2):** 15 new tables in `lib/db/src/schema/sales.ts` — document_sequences, client_addresses, quotations/items, proforma_invoices/items, sales_orders/items, delivery_challans/items, sales_invoices/items, sales_returns/items, sales_payments. Old tables renamed to `legacy_*` prefix.
 - **Sales API routes:** `artifacts/api-server/src/routes/salesModule.ts` — full CRUD for all 6 document types + payments + client addresses. Auto-numbered documents with row-level locking (doc_sequences table). GST auto-switch: CGST+SGST when place_of_supply matches company state (27), IGST otherwise.

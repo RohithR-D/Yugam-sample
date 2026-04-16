@@ -1,24 +1,27 @@
-import { pgTable, serial, varchar, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const shipmentsTable = pgTable("shipments", {
-  id: serial("id").primaryKey(),
-  trackingNumber: varchar("tracking_number", { length: 100 }).notNull().unique(),
-  destination: varchar("destination", { length: 255 }).notNull(),
-  carrier: varchar("carrier", { length: 100 }).notNull(),
-  status: varchar("status", { length: 50 }).notNull().default("Pending"),
-  dispatchDate: timestamp("dispatch_date").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+const ShipmentSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  trackingNumber: { type: String, required: true, unique: true },
+  destination: { type: String, required: true },
+  carrier: { type: String, required: true },
+  status: { type: String, default: "Pending" },
+  dispatchDate: { type: Date, required: true },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertShipmentSchema = createInsertSchema(shipmentsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  status: z.enum(["Pending", "In Transit", "Delivered", "Delayed"]),
+autoIncrementId(ShipmentSchema, "shipments");
+export const shipmentsTable = mongoose.models.Shipment || mongoose.model("Shipment", ShipmentSchema);
+
+export const insertShipmentSchema = z.object({
+  trackingNumber: z.string().min(1),
+  destination: z.string().min(1),
+  carrier: z.string().min(1),
+  status: z.enum(["Pending", "In Transit", "Delivered", "Delayed"]).default("Pending"),
   dispatchDate: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
 });
 
 export type InsertShipment = z.infer<typeof insertShipmentSchema>;
-export type Shipment = typeof shipmentsTable.$inferSelect;
+export type Shipment = mongoose.InferSchemaType<typeof ShipmentSchema>;

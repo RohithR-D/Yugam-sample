@@ -1,24 +1,29 @@
-import { pgTable, serial, varchar, integer, numeric, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const inventoryTable = pgTable("inventory", {
-  id: serial("id").primaryKey(),
-  itemName: varchar("item_name", { length: 255 }).notNull(),
-  sku: varchar("sku", { length: 100 }).notNull().unique(),
-  category: varchar("category", { length: 100 }).notNull(),
-  quantity: integer("quantity").notNull().default(0),
-  unitPrice: numeric("unit_price", { precision: 12, scale: 2 }).notNull().default("0"),
-  status: varchar("status", { length: 50 }).notNull().default("In Stock"),
-  createdAt: timestamp("created_at").defaultNow(),
+const InventorySchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  itemName: { type: String, required: true },
+  sku: { type: String, required: true, unique: true },
+  category: { type: String, required: true },
+  quantity: { type: Number, default: 0 },
+  unitPrice: { type: Number, default: 0 },
+  status: { type: String, default: "In Stock" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertInventorySchema = createInsertSchema(inventoryTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  status: z.enum(["In Stock", "Low Stock", "Out of Stock"]),
+autoIncrementId(InventorySchema, "inventory");
+export const inventoryTable = mongoose.models.Inventory || mongoose.model("Inventory", InventorySchema);
+
+export const insertInventorySchema = z.object({
+  itemName: z.string().min(1),
+  sku: z.string().min(1),
+  category: z.string().min(1),
+  quantity: z.coerce.number().default(0),
+  unitPrice: z.coerce.number().default(0),
+  status: z.enum(["In Stock", "Low Stock", "Out of Stock"]).default("In Stock"),
 });
 
 export type InsertInventory = z.infer<typeof insertInventorySchema>;
-export type Inventory = typeof inventoryTable.$inferSelect;
+export type Inventory = mongoose.InferSchemaType<typeof InventorySchema>;

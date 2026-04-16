@@ -1,23 +1,27 @@
-import { pgTable, serial, varchar, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const inventoryLocationsTable = pgTable("inventory_locations", {
-  id: serial("id").primaryKey(),
-  locationName: varchar("location_name", { length: 255 }).notNull(),
-  locationType: varchar("location_type", { length: 30 }).notNull().default("Warehouse"),
-  capacity: integer("capacity").notNull().default(0),
-  manager: varchar("manager", { length: 255 }).notNull().default(""),
-  address: varchar("address", { length: 500 }).notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const InventoryLocationSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  locationName: { type: String, required: true },
+  locationType: { type: String, default: "Warehouse" },
+  capacity: { type: Number, default: 0 },
+  manager: { type: String, default: "" },
+  address: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertInventoryLocationSchema = createInsertSchema(inventoryLocationsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(InventoryLocationSchema, "inventory_locations");
+export const inventoryLocationsTable = mongoose.models.InventoryLocation || mongoose.model("InventoryLocation", InventoryLocationSchema);
+
+export const insertInventoryLocationSchema = z.object({
+  locationName: z.string().min(1),
   locationType: z.enum(["Warehouse", "Store"]).default("Warehouse"),
+  capacity: z.coerce.number().default(0),
+  manager: z.string().default("").optional(),
+  address: z.string().default("").optional(),
 });
 
 export type InsertInventoryLocation = z.infer<typeof insertInventoryLocationSchema>;
-export type InventoryLocation = typeof inventoryLocationsTable.$inferSelect;
+export type InventoryLocation = mongoose.InferSchemaType<typeof InventoryLocationSchema>;

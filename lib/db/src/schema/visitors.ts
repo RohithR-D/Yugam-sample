@@ -1,57 +1,70 @@
-import { pgTable, serial, varchar, timestamp, integer, text } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
+import mongoose from "mongoose";
 import { z } from "zod/v4";
-import { employeesTable } from "./employees";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
 
-export const visitorsTable = pgTable("visitors", {
-  id: serial("id").primaryKey(),
-  visitorName: varchar("visitor_name", { length: 300 }).notNull(),
-  phone: varchar("phone", { length: 20 }).notNull().default(""),
-  photoUrl: text("photo_url").notNull().default(""),
-  hostEmployeeId: integer("host_employee_id").references(() => employeesTable.id),
-  hostName: varchar("host_name", { length: 300 }).notNull(),
-  purpose: varchar("purpose", { length: 50 }).notNull().default("Meeting"),
-  ticketRef: varchar("ticket_ref", { length: 100 }).notNull().default(""),
-  classification: varchar("classification", { length: 20 }).notNull().default("Standard"),
-  status: varchar("status", { length: 50 }).notNull().default("In-Premises"),
-  checkInTime: timestamp("check_in_time").notNull(),
-  checkOutTime: timestamp("check_out_time"),
-  createdAt: timestamp("created_at").defaultNow(),
+const VisitorSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  visitorName: { type: String, required: true },
+  phone: { type: String, default: "" },
+  photoUrl: { type: String, default: "" },
+  hostEmployeeId: { type: Number },
+  hostName: { type: String, required: true },
+  purpose: { type: String, default: "Meeting" },
+  ticketRef: { type: String, default: "" },
+  classification: { type: String, default: "Standard" },
+  status: { type: String, default: "In-Premises" },
+  checkInTime: { type: Date, required: true },
+  checkOutTime: { type: Date },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertVisitorSchema = createInsertSchema(visitorsTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  status: z.enum(["In-Premises", "Checked-Out"]).default("In-Premises"),
+autoIncrementId(VisitorSchema, "visitors");
+export const visitorsTable = mongoose.models.Visitor || mongoose.model("Visitor", VisitorSchema);
+
+export const insertVisitorSchema = z.object({
+  visitorName: z.string().min(1),
+  phone: z.string().default("").optional(),
+  photoUrl: z.string().default("").optional(),
+  hostEmployeeId: z.coerce.number().optional(),
+  hostName: z.string().min(1),
   purpose: z.enum(["Meeting", "Interview", "Delivery", "Maintenance"]).default("Meeting"),
+  ticketRef: z.string().default("").optional(),
   classification: z.enum(["Standard", "VIP", "Blacklist"]).default("Standard"),
+  status: z.enum(["In-Premises", "Checked-Out"]).default("In-Premises"),
   checkInTime: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v),
-  checkOutTime: z.union([z.string(), z.date()]).transform((v) => typeof v === "string" ? new Date(v) : v).optional().nullable(),
+  checkOutTime: z.union([z.string(), z.date()]).optional().nullable().transform((v) => v != null && typeof v === "string" ? new Date(v) : v),
 });
 
-export const gateWatchlistTable = pgTable("gate_watchlist", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 300 }).notNull(),
-  phone: varchar("phone", { length: 20 }).notNull().default(""),
-  classification: varchar("classification", { length: 20 }).notNull().default("Blacklist"),
-  reason: text("reason").notNull().default(""),
-  createdAt: timestamp("created_at").defaultNow(),
+const GateWatchlistSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  name: { type: String, required: true },
+  phone: { type: String, default: "" },
+  classification: { type: String, default: "Blacklist" },
+  reason: { type: String, default: "" },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertWatchlistSchema = createInsertSchema(gateWatchlistTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
-  classification: z.enum(["VIP", "Blacklist"]),
+autoIncrementId(GateWatchlistSchema, "gate_watchlist");
+export const gateWatchlistTable = mongoose.models.GateWatchlist || mongoose.model("GateWatchlist", GateWatchlistSchema);
+
+export const insertWatchlistSchema = z.object({
+  name: z.string().min(1),
+  phone: z.string().default("").optional(),
+  classification: z.enum(["VIP", "Blacklist"]).default("Blacklist"),
+  reason: z.string().default("").optional(),
 });
 
-export const gateSettingsTable = pgTable("gate_settings", {
-  id: serial("id").primaryKey(),
-  settingKey: varchar("setting_key", { length: 100 }).notNull().unique(),
-  settingValue: varchar("setting_value", { length: 500 }).notNull().default(""),
-  updatedAt: timestamp("updated_at").defaultNow(),
+const GateSettingSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  settingKey: { type: String, required: true, unique: true },
+  settingValue: { type: String, default: "" },
+  updatedAt: { type: Date, default: Date.now },
 });
+
+autoIncrementId(GateSettingSchema, "gate_settings");
+export const gateSettingsTable = mongoose.models.GateSetting || mongoose.model("GateSetting", GateSettingSchema);
 
 export type InsertVisitor = z.infer<typeof insertVisitorSchema>;
-export type Visitor = typeof visitorsTable.$inferSelect;
+export type Visitor = mongoose.InferSchemaType<typeof VisitorSchema>;
+export type GateWatchlist = mongoose.InferSchemaType<typeof GateWatchlistSchema>;
+export type GateSetting = mongoose.InferSchemaType<typeof GateSettingSchema>;

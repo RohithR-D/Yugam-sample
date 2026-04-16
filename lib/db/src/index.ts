@@ -1,16 +1,12 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import pg from "pg";
-import * as schema from "./schema";
+import mongoose from "mongoose";
+import { connectMongoDB } from "./connectMongoDB";
+import { runMongoTransaction } from "./transaction";
+import * as schema from "./schema/index.js";
 
-const { Pool } = pg;
+export const db = mongoose.connection;
+export const mongooseInstance = mongoose;
+export const connectDB = connectMongoDB;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
-
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle(pool, { schema });
-
-export * from "./schema";
+export * from "./schema/index.js";
+export { connectMongoDB, runMongoTransaction };
+export type MongoConnection = typeof mongoose.connection;

@@ -1,27 +1,36 @@
-import { pgTable, serial, varchar, numeric, integer, timestamp } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod/v4";
 
-export const inventoryCatalogTable = pgTable("inventory_catalog", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  sku: varchar("sku", { length: 100 }).notNull().default(""),
-  category: varchar("category", { length: 100 }).notNull().default("General"),
-  itemType: varchar("item_type", { length: 30 }).notNull().default("Raw Material"),
-  hsnSac: varchar("hsn_sac", { length: 20 }).notNull().default(""),
-  unitPrice: numeric("unit_price", { precision: 14, scale: 2 }).notNull().default("0"),
-  uom: varchar("uom", { length: 30 }).notNull().default("Nos"),
-  globalStock: integer("global_stock").notNull().default(0),
-  reorderLevel: integer("reorder_level").notNull().default(10),
-  createdAt: timestamp("created_at").defaultNow(),
+import mongoose from "mongoose";
+import { z } from "zod";
+import { autoIncrementId, createMongoSchema } from "./mongoUtils.js";
+
+const InventoryCatalogSchema = createMongoSchema({
+  id: { type: Number, unique: true, index: true },
+  name: { type: String, required: true },
+  sku: { type: String, default: "" },
+  category: { type: String, default: "General" },
+  itemType: { type: String, default: "Raw Material" },
+  hsnSac: { type: String, default: "" },
+  unitPrice: { type: Number, default: 0 },
+  uom: { type: String, default: "Nos" },
+  globalStock: { type: Number, default: 0 },
+  reorderLevel: { type: Number, default: 10 },
+  createdAt: { type: Date, default: Date.now },
 });
 
-export const insertInventoryCatalogSchema = createInsertSchema(inventoryCatalogTable).omit({
-  id: true,
-  createdAt: true,
-}).extend({
+autoIncrementId(InventoryCatalogSchema, "inventory_catalog");
+export const inventoryCatalogTable = mongoose.models.InventoryCatalog || mongoose.model("InventoryCatalog", InventoryCatalogSchema);
+
+export const insertInventoryCatalogSchema = z.object({
+  name: z.string().min(1),
+  sku: z.string().default("").optional(),
+  category: z.string().default("General").optional(),
   itemType: z.enum(["Raw Material", "Finished Product"]).default("Raw Material"),
+  hsnSac: z.string().default("").optional(),
+  unitPrice: z.coerce.number().default(0),
+  uom: z.string().default("Nos").optional(),
+  globalStock: z.coerce.number().default(0),
+  reorderLevel: z.coerce.number().default(10),
 });
 
 export type InsertInventoryCatalog = z.infer<typeof insertInventoryCatalogSchema>;
-export type InventoryCatalog = typeof inventoryCatalogTable.$inferSelect;
+export type InventoryCatalog = mongoose.InferSchemaType<typeof InventoryCatalogSchema>;
